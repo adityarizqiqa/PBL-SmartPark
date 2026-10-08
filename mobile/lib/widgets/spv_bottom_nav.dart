@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../screens/beranda_spv_screen.dart';
 import '../screens/kelola_lahan_screen.dart';
+import '../screens/kelola_petugas_screen.dart';
 import '../screens/kelola_shift_screen.dart';
 
 /// Bottom navigation for the SPV (pengawas) console.
@@ -55,6 +56,16 @@ class SpvBottomNav extends StatelessWidget {
         );
         break;
       case 3:
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => KelolaPetugasScreen(
+              officerName: officerName,
+              officerRole: officerRole,
+            ),
+          ),
+        );
+        break;
+      case 4:
         onLogout();
         break;
     }
@@ -107,6 +118,11 @@ class SpvBottomNav extends StatelessWidget {
             icon: Icon(Icons.schedule_outlined),
             activeIcon: Icon(Icons.schedule_rounded),
             label: 'Shift',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.groups_outlined),
+            activeIcon: Icon(Icons.groups_rounded),
+            label: 'Petugas',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.logout_rounded),

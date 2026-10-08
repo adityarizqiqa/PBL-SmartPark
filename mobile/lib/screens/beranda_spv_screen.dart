@@ -3,6 +3,7 @@ import '../constants/app_colors.dart';
 import '../widgets/spv_app_bar.dart';
 import '../widgets/spv_bottom_nav.dart';
 import 'kelola_lahan_screen.dart';
+import 'kelola_petugas_screen.dart';
 import 'kelola_shift_screen.dart';
 import 'login_screen.dart';
 
@@ -312,6 +313,24 @@ class BerandaSpvScreen extends StatelessWidget {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (_) => KelolaShiftScreen(
+                  officerName: officerName,
+                  officerRole: officerRole,
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildConsoleCard(
+          context: context,
+          title: 'Kelola Petugas',
+          subtitle: 'Akun petugas gerbang & pengawas',
+          icon: Icons.groups_rounded,
+          colors: const [AppColors.spPrimary600, AppColors.spPrimary800],
+          onTap: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => KelolaPetugasScreen(
                   officerName: officerName,
                   officerRole: officerRole,
                 ),

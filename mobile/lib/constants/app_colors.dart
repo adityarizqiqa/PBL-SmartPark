@@ -43,6 +43,7 @@ class AppColors {
   static const Color spSuccessBg = Color(0xFFECFDF5);
   static const Color spSuccessInk = Color(0xFF047857);
   static const Color spWarn = Color(0xFFB45309);
+  static const Color spWarnInk = Color(0xFF92400E);
   static const Color spWarnBg = Color(0xFFFFFBEB);
   static const Color spScan = Color(0xFF5BB8FE);
 }

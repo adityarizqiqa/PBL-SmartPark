@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import 'beranda_screen.dart';
+import 'beranda_spv_screen.dart';
 
 class OfficerItem {
   final String id;
@@ -105,15 +106,20 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
+      final Widget destination = _selectedOfficer.isSupervisor
+          ? BerandaSpvScreen(
+              officerName: _selectedOfficer.name,
+              officerRole: _selectedOfficer.roleDescription,
+            )
+          : BerandaScreen(
+              officerName: _selectedOfficer.name,
+              officerRole: _selectedOfficer.roleDescription,
+              isSupervisor: _selectedOfficer.isSupervisor,
+              parkingLot: _selectedLot,
+            );
+
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => BerandaScreen(
-            officerName: _selectedOfficer.name,
-            officerRole: _selectedOfficer.roleDescription,
-            isSupervisor: _selectedOfficer.isSupervisor,
-            parkingLot: _selectedLot,
-          ),
-        ),
+        MaterialPageRoute(builder: (context) => destination),
       );
     });
   }

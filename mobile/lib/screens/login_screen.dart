@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'beranda_screen.dart';
 
 class OfficerItem {
   final String id;
@@ -100,6 +101,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => BerandaScreen(
+            officerName: _selectedOfficer.name,
+            officerRole: _selectedOfficer.roleDescription,
+            isSupervisor: _selectedOfficer.isSupervisor,
+            parkingLot: _selectedLot,
           ),
         ),
       );

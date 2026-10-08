@@ -71,4 +71,99 @@ void main() {
     expect(find.text('835'), findsOneWidget);
     expect(find.text('#089'), findsOneWidget);
   });
+
+  testWidgets('Check-In Flow test: Step 1 -> Step 2 -> Step 3 -> Finish', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(const SmartParkApp());
+    await tester.enterText(find.byType(TextFormField), 'password123');
+    await tester.tap(find.text('Mulai Bertugas'));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+
+    // Tap CHECK-IN from Beranda
+    await tester.ensureVisible(find.text('CHECK-IN'));
+    await tester.tap(find.text('CHECK-IN'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Step 1: Scan KTM
+    expect(find.text('LANGKAH 1 DARI 3'), findsOneWidget);
+    expect(find.text('Scan KTM'), findsOneWidget);
+    expect(find.text('244107020204'), findsOneWidget);
+
+    // Tap Lanjut Scan Plat -> Step 2
+    await tester.ensureVisible(find.text('Lanjut Scan Plat'));
+    await tester.tap(find.text('Lanjut Scan Plat'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Step 2: Scan Plat
+    expect(find.text('Langkah 2 dari 3'), findsOneWidget);
+    expect(find.text('Scan Plat Kendaraan'), findsWidgets);
+
+    // Tap Gunakan Plat Ini -> Step 3
+    await tester.ensureVisible(find.text('Gunakan Plat Ini'));
+    await tester.tap(find.text('Gunakan Plat Ini'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Step 3: Konfirmasi
+    expect(find.text('Konfirmasi Check-In'), findsWidgets);
+    expect(find.text('Data Sesi Check-In'), findsOneWidget);
+    expect(find.text('Siap Check-In'), findsOneWidget);
+
+    // Tap Konfirmasi Check-In
+    await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Success dialog
+    expect(find.text('Check-In Berhasil!'), findsOneWidget);
+    await tester.tap(find.text('Ke Beranda'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BerandaScreen), findsOneWidget);
+  });
+
+  testWidgets('Check-Out Flow test: Verification -> Confirm Check-Out', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(const SmartParkApp());
+    await tester.enterText(find.byType(TextFormField), 'password123');
+    await tester.tap(find.text('Mulai Bertugas'));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+
+    // Tap CHECK-OUT from Beranda
+    await tester.ensureVisible(find.text('CHECK-OUT'));
+    await tester.tap(find.text('CHECK-OUT'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Verify CheckOut screen elements
+    expect(find.text('Verifikasi Check-Out'), findsWidgets);
+    expect(find.text('POS KELUAR'), findsOneWidget);
+    expect(find.text('SESUAI'), findsOneWidget);
+    expect(find.text('PERBANDINGAN PLAT'), findsOneWidget);
+
+    // Toggle checkbox
+    await tester.ensureVisible(find.text('KTM telah diperiksa secara visual'));
+    await tester.tap(find.text('KTM telah diperiksa secara visual'));
+    await tester.pumpAndSettle();
+
+    // Confirm check-out
+    await tester.ensureVisible(find.text('Konfirmasi Check-Out'));
+    await tester.tap(find.text('Konfirmasi Check-Out'));
+    await tester.pumpAndSettle();
+
+    // Success dialog
+    expect(find.text('Check-Out Berhasil!'), findsOneWidget);
+    await tester.tap(find.text('Selesai & Ke Beranda'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BerandaScreen), findsOneWidget);
+  });
 }

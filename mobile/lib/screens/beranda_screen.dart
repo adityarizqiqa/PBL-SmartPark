@@ -3,6 +3,8 @@ import '../constants/app_colors.dart';
 import 'login_screen.dart';
 import 'kendaraan_screen.dart';
 import 'riwayat_screen.dart';
+import 'checkin_screen.dart';
+import 'checkout_screen.dart';
 
 /// Model for parking activity log
 class ParkingActivityItem {
@@ -653,10 +655,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _showActionFeedback(
-              'Mode Check-In Aktif',
-              'Menuju pemindaian KTM & deteksi plat kendaraan masuk.',
-            ),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => CheckInScreen(
+                    officerName: widget.officerName,
+                    officerRole: widget.officerRole,
+                    isSupervisor: widget.isSupervisor,
+                    parkingLot: widget.parkingLot,
+                  ),
+                ),
+              );
+            },
             borderRadius: BorderRadius.circular(12),
             child: Ink(
               decoration: BoxDecoration(
@@ -775,10 +785,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _showActionFeedback(
-              'Mode Check-Out Aktif',
-              'Menuju verifikasi plat kendaraan keluar & validasi tiket.',
-            ),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => CheckOutScreen(
+                    officerName: widget.officerName,
+                    officerRole: widget.officerRole,
+                    isSupervisor: widget.isSupervisor,
+                    parkingLot: widget.parkingLot,
+                  ),
+                ),
+              );
+            },
             borderRadius: BorderRadius.circular(12),
             child: Ink(
               decoration: BoxDecoration(

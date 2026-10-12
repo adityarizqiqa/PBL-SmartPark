@@ -4,13 +4,91 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mobile/api/api_client.dart';
+import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/screens/beranda_screen.dart';
 import 'package:mobile/screens/kendaraan_screen.dart';
 import 'package:mobile/screens/riwayat_screen.dart';
 
+ApiClient _createTestApiClient() {
+  return ApiClient(
+    client: MockClient((request) async {
+      if (request.url.path == '/api/officers') {
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 1,
+              'employee_no': 'PK001',
+              'name': 'Budi Santoso',
+              'phone': '0812',
+              'role': 'officer',
+              'is_active': true,
+              'has_password': true,
+            },
+          ]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      } else if (request.url.path == '/api/areas') {
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 1,
+              'code': 'POS-UTAMA',
+              'name': 'Pos Parkir Utama',
+              'is_active': true,
+            },
+          ]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      } else if (request.url.path == '/api/shifts/join') {
+        return http.Response(
+          jsonEncode({
+            'token': 'shift-tok-test',
+            'assignment': {
+              'id': 1,
+              'shift_id': 1,
+              'officer_id': 1,
+              'officer_name': 'Budi Santoso',
+              'joined_at': '2026-10-12T07:00:00',
+              'left_at': null,
+              'left_note': null,
+            },
+            'shift': {
+              'id': 1,
+              'parking_area_id': 1,
+              'area_name': 'Pos Parkir Utama',
+              'started_at': '2026-10-12T07:00:00',
+              'ended_at': null,
+              'end_note': null,
+              'is_open': true,
+              'assignments': [],
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      } else if (request.url.path == '/api/sessions/dashboard') {
+        return http.Response(
+          jsonEncode({
+            'active_now': 428,
+            'checked_in_today': 852,
+            'checked_out_today': 424,
+            'recent': [],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      return http.Response('Not Found', 404);
+    }),
+  );
+}
+
 void main() {
   setUp(() {
+    SessionStore.instance.clear();
     ApiClient.defaultClient = MockClient((request) async {
       final path = request.url.path;
       if (path == '/api/sessions/check-in') {
@@ -112,16 +190,16 @@ void main() {
 
   tearDown(() {
     ApiClient.defaultClient = null;
+    SessionStore.instance.clear();
   });
 
   testWidgets('Full flow test: Login -> Beranda -> Kendaraan -> Riwayat Screen', (WidgetTester tester) async {
-    // Set a phone-like viewport size
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const SmartParkApp());
+    await tester.pumpWidget(SmartParkApp(apiClient: _createTestApiClient()));
+    await tester.pumpAndSettle();
 
     // Verify key Login UI elements exist
     expect(find.text('SmartPark'), findsOneWidget);
@@ -136,10 +214,6 @@ void main() {
     // Ensure button is visible & tap 'Mulai Bertugas'
     await tester.ensureVisible(find.text('Mulai Bertugas'));
     await tester.tap(find.text('Mulai Bertugas'));
-    await tester.pump();
-
-    // Advance time for simulated login delay (600ms)
-    await tester.pump(const Duration(milliseconds: 700));
     await tester.pumpAndSettle();
 
     // Verify that BerandaScreen is displayed
@@ -165,7 +239,6 @@ void main() {
     expect(find.text('Kendaraan Sedang\nParkir'), findsOneWidget);
     expect(find.text('Cari NIM atau Plat Nomor...'), findsOneWidget);
     expect(find.text('Scan Check-Out'), findsOneWidget);
-    expect(find.text('N 1234 ABC'), findsOneWidget);
 
     // Tap on 'Riwayat' in BottomNavigationBar from KendaraanScreen
     await tester.tap(find.byIcon(Icons.history_rounded));
@@ -177,7 +250,6 @@ void main() {
     expect(find.text('RIWAYAT SESI'), findsOneWidget);
     expect(find.text('852'), findsOneWidget);
     expect(find.text('835'), findsOneWidget);
-    expect(find.text('#089'), findsOneWidget);
   });
 
   testWidgets('Check-In Flow test: Step 1 -> Step 2 -> Step 3 -> Finish', (WidgetTester tester) async {
@@ -185,10 +257,11 @@ void main() {
     tester.view.devicePixelRatio = 2.5;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(const SmartParkApp());
+    await tester.pumpWidget(SmartParkApp(apiClient: _createTestApiClient()));
+    await tester.pumpAndSettle();
+
     await tester.enterText(find.byType(TextFormField), 'password123');
     await tester.tap(find.text('Mulai Bertugas'));
-    await tester.pump(const Duration(milliseconds: 700));
     await tester.pumpAndSettle();
 
     // Tap CHECK-IN from Beranda
@@ -239,10 +312,11 @@ void main() {
     tester.view.devicePixelRatio = 2.5;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(const SmartParkApp());
+    await tester.pumpWidget(SmartParkApp(apiClient: _createTestApiClient()));
+    await tester.pumpAndSettle();
+
     await tester.enterText(find.byType(TextFormField), 'password123');
     await tester.tap(find.text('Mulai Bertugas'));
-    await tester.pump(const Duration(milliseconds: 700));
     await tester.pumpAndSettle();
 
     // Tap CHECK-OUT from Beranda

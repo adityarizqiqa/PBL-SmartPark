@@ -1,30 +1,11 @@
 import 'package:flutter/material.dart';
+import '../api/api_client.dart';
+import '../api/api_exception.dart';
 import '../constants/app_colors.dart';
+import '../models/models.dart';
 import 'beranda_screen.dart';
+import 'checkout_screen.dart';
 import 'riwayat_screen.dart';
-
-/// Data model for an active parked vehicle
-class ParkedVehicleItem {
-  final String nim;
-  final String plateNumber;
-  final String ownerName;
-  final String duration;
-  final String entryTime;
-  final String entryGate;
-  final bool isRejected;
-  final String? rejectionReason;
-
-  const ParkedVehicleItem({
-    required this.nim,
-    required this.plateNumber,
-    required this.ownerName,
-    required this.duration,
-    required this.entryTime,
-    required this.entryGate,
-    this.isRejected = false,
-    this.rejectionReason,
-  });
-}
 
 /// Screen 12 — Kendaraan Sedang Parkir
 /// Mapped from Figma node 15:2170 (tmp/uiux/12-kendaraan-sedang-parkir.html)
@@ -33,14 +14,16 @@ class KendaraanScreen extends StatefulWidget {
   final String officerRole;
   final bool isSupervisor;
   final String parkingLot;
+  final ApiClient apiClient;
 
-  const KendaraanScreen({
+  KendaraanScreen({
     super.key,
     this.officerName = 'Budi Santoso',
     this.officerRole = 'Petugas Gerbang',
     this.isSupervisor = false,
     this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
-  });
+    ApiClient? apiClient,
+  }) : apiClient = apiClient ?? ApiClient();
 
   @override
   State<KendaraanScreen> createState() => _KendaraanScreenState();
@@ -48,77 +31,18 @@ class KendaraanScreen extends StatefulWidget {
 
 class _KendaraanScreenState extends State<KendaraanScreen> {
   final TextEditingController _searchController = TextEditingController();
-  int _selectedFilterIndex = 0; // 0: Semua, 1: Check-out Ditolak
+  int _selectedFilterIndex = 0; // 0: Semua
   int _selectedNavIndex = 1; // 1: Kendaraan
 
-  // Master parked vehicles data from prototype
-  final List<ParkedVehicleItem> _allVehicles = const [
-    ParkedVehicleItem(
-      nim: '244107020204',
-      plateNumber: 'N 1234 ABC',
-      ownerName: 'Ahmad Faiz Fauzan',
-      duration: '3j 24m',
-      entryTime: '07:32 WIB',
-      entryGate: 'Pos Parkir Climbing',
-      isRejected: false,
-    ),
-    ParkedVehicleItem(
-      nim: '223105010042',
-      plateNumber: 'B 3821 SDE',
-      ownerName: 'Muhammad Rizki Pratama',
-      duration: '2j 41m',
-      entryTime: '08:15 WIB',
-      entryGate: 'Pos Parkir Climbing',
-      isRejected: false,
-    ),
-    ParkedVehicleItem(
-      nim: '204172018889',
-      plateNumber: 'N 8890 XY',
-      ownerName: 'Siti Rahmawati',
-      duration: '4j 06m',
-      entryTime: '06:50 WIB',
-      entryGate: 'Pos Parkir Climbing',
-      isRejected: false,
-    ),
-    ParkedVehicleItem(
-      nim: '214107020055',
-      plateNumber: 'B 4567 KLA',
-      ownerName: 'Dimas Aditya Nugraha',
-      duration: '1j 18m',
-      entryTime: '08:42 WIB',
-      entryGate: 'Pos Parkir Utama',
-      isRejected: true,
-      rejectionReason: 'Plat nomor tidak sesuai data KTM saat tap keluar',
-    ),
-    ParkedVehicleItem(
-      nim: '234107020118',
-      plateNumber: 'N 8921 DEF',
-      ownerName: 'Nabila Putri Cahyani',
-      duration: '1j 09m',
-      entryTime: '08:51 WIB',
-      entryGate: 'Pos Gerbang Timur',
-      isRejected: false,
-    ),
-    ParkedVehicleItem(
-      nim: '244107020015',
-      plateNumber: 'L 1945 POL',
-      ownerName: 'Bayu Arya Permana',
-      duration: '0j 48m',
-      entryTime: '09:12 WIB',
-      entryGate: 'Pos Parkir Utama',
-      isRejected: false,
-    ),
-    ParkedVehicleItem(
-      nim: '224107020301',
-      plateNumber: 'AG 5541 VZ',
-      ownerName: 'Fajar Eka Saputra',
-      duration: '2j 05m',
-      entryTime: '07:55 WIB',
-      entryGate: 'Pos Parkir Fakultas Teknik',
-      isRejected: true,
-      rejectionReason: 'Masa berlaku STNK perlu verifikasi fisik',
-    ),
-  ];
+  List<ActiveSession> _allVehicles = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchActiveSessions();
+  }
 
   @override
   void dispose() {
@@ -126,26 +50,86 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
     super.dispose();
   }
 
-  List<ParkedVehicleItem> get _filteredVehicles {
+  Future<void> _fetchActiveSessions() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await widget.apiClient.get('/api/sessions/active');
+      if (response is List) {
+        final list = response
+            .map((e) => ActiveSession.fromJson((e as Map).cast<String, dynamic>()))
+            .toList();
+        if (mounted) {
+          setState(() {
+            _allVehicles = list;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _allVehicles = [];
+            _isLoading = false;
+          });
+        }
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal memuat kendaraan aktif: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _formatDuration(int minutes) {
+    if (minutes < 0) minutes = 0;
+    final hours = minutes ~/ 60;
+    final mins = minutes % 60;
+    return '${hours}j ${mins.toString().padLeft(2, '0')}m';
+  }
+
+  String _formatTime(DateTime dt) {
+    final local = dt.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$h:$m WIB';
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final d = local.day.toString().padLeft(2, '0');
+    final mo = local.month.toString().padLeft(2, '0');
+    final y = local.year;
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$d/$mo/$y $h:$m WIB';
+  }
+
+  List<ActiveSession> get _filteredVehicles {
     final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return _allVehicles;
+
     return _allVehicles.where((vehicle) {
-      final matchesFilter = _selectedFilterIndex == 0 ||
-          (_selectedFilterIndex == 1 && vehicle.isRejected);
-
-      if (!matchesFilter) return false;
-
-      if (query.isEmpty) return true;
-
       return vehicle.nim.toLowerCase().contains(query) ||
-          vehicle.plateNumber.toLowerCase().contains(query) ||
-          vehicle.ownerName.toLowerCase().contains(query);
+          vehicle.plateIn.toLowerCase().contains(query) ||
+          vehicle.areaName.toLowerCase().contains(query) ||
+          vehicle.checkedInBy.toLowerCase().contains(query);
     }).toList();
   }
 
-  int get _rejectedCount =>
-      _allVehicles.where((v) => v.isRejected).length;
-
-  void _showDetailModal(ParkedVehicleItem vehicle) {
+  void _showDetailModal(ActiveSession vehicle) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -194,9 +178,9 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'Detail Sesi Parkir',
-                        style: TextStyle(
+                      Text(
+                        'Detail Sesi #${vehicle.id}',
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: AppColors.spInk,
@@ -207,24 +191,24 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: vehicle.isRejected ? AppColors.spDangerBg : const Color(0xFFD1FAE5),
+                      color: const Color(0xFFD1FAE5),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
+                      children: const [
                         Icon(
-                          vehicle.isRejected ? Icons.error_outline : Icons.check_circle_rounded,
+                          Icons.check_circle_rounded,
                           size: 13,
-                          color: vehicle.isRejected ? AppColors.spDangerInk : AppColors.spSuccessInk,
+                          color: AppColors.spSuccessInk,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
-                          vehicle.isRejected ? 'Perlu Verifikasi' : 'Sedang Parkir',
+                          'Sedang Parkir',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: vehicle.isRejected ? AppColors.spDangerInk : AppColors.spSuccessInk,
+                            color: AppColors.spSuccessInk,
                           ),
                         ),
                       ],
@@ -253,7 +237,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        vehicle.plateNumber,
+                        vehicle.plateIn,
                         style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 18,
@@ -275,7 +259,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                           ),
                         ),
                         Text(
-                          vehicle.duration,
+                          _formatDuration(vehicle.durationMinutes),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -299,51 +283,21 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
               const Divider(height: 14, color: AppColors.spBorderSoft),
               _buildDetailInfoTile(
                 icon: Icons.person_outline,
-                title: 'Nama Pemilik',
-                value: vehicle.ownerName,
+                title: 'Petugas Masuk',
+                value: vehicle.checkedInBy,
               ),
               const Divider(height: 14, color: AppColors.spBorderSoft),
               _buildDetailInfoTile(
                 icon: Icons.access_time_rounded,
                 title: 'Waktu Check-In',
-                value: vehicle.entryTime,
+                value: _formatDateTime(vehicle.checkedInAt),
               ),
               const Divider(height: 14, color: AppColors.spBorderSoft),
               _buildDetailInfoTile(
                 icon: Icons.location_on_outlined,
                 title: 'Pos Masuk',
-                value: vehicle.entryGate,
+                value: vehicle.areaName.isNotEmpty ? vehicle.areaName : widget.parkingLot,
               ),
-
-              if (vehicle.isRejected && vehicle.rejectionReason != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.spDangerBg.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline, color: AppColors.spDangerInk, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          vehicle.rejectionReason!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.spDangerInk,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
 
               const SizedBox(height: 20),
 
@@ -372,13 +326,24 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(ctx).pop();
-                        _showFeedback(
-                          'Verifikasi Manual',
-                          'Membuka sesi verifikasi petugas untuk plat ${vehicle.plateNumber}.',
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => CheckOutScreen(
+                              officerName: widget.officerName,
+                              officerRole: widget.officerRole,
+                              isSupervisor: widget.isSupervisor,
+                              parkingLot: vehicle.areaName.isNotEmpty
+                                  ? vehicle.areaName
+                                  : widget.parkingLot,
+                              nim: vehicle.nim,
+                              checkInPlate: vehicle.plateIn,
+                              checkInTime: _formatTime(vehicle.checkedInAt),
+                            ),
+                          ),
                         );
                       },
-                      icon: const Icon(Icons.verified_outlined, size: 18),
-                      label: const Text('Verifikasi'),
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text('Check-Out'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.spPrimary,
                         foregroundColor: Colors.white,
@@ -481,10 +446,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                     Expanded(
                       child: RefreshIndicator(
                         color: AppColors.spPrimary,
-                        onRefresh: () async {
-                          await Future.delayed(const Duration(milliseconds: 400));
-                          if (mounted) setState(() {});
-                        },
+                        onRefresh: _fetchActiveSessions,
                         child: SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -809,12 +771,6 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                 label: 'Semua (${_allVehicles.length})',
                 icon: Icons.format_list_bulleted_rounded,
               ),
-              const SizedBox(width: 8),
-              _buildFilterChip(
-                index: 1,
-                label: 'Check-out Ditolak ($_rejectedCount)',
-                icon: Icons.error_outline_rounded,
-              ),
             ],
           ),
         ),
@@ -876,7 +832,55 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
   }
 
   /// 4. Vehicle Cards List
-  Widget _buildVehicleCardsList(List<ParkedVehicleItem> vehicles) {
+  Widget _buildVehicleCardsList(List<ActiveSession> vehicles) {
+    if (_isLoading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.spPrimary),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.spDangerBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 40, color: AppColors.spDanger),
+            const SizedBox(height: 10),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.spDangerInk,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _fetchActiveSessions,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.spDanger,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (vehicles.isEmpty) {
       return Container(
         width: double.infinity,
@@ -887,26 +891,29 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
           border: Border.all(color: AppColors.spBorder),
         ),
         child: Column(
-          children: const [
-            Icon(
-              Icons.search_off_rounded,
+          children: [
+            const Icon(
+              Icons.directions_car_filled_outlined,
               size: 48,
               color: AppColors.spInk4,
             ),
-            SizedBox(height: 12),
-            Text(
-              'Tidak ada kendaraan ditemukan',
+            const SizedBox(height: 12),
+            const Text(
+              'Tidak ada kendaraan yang sedang parkir',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: AppColors.spInk,
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
-              'Coba ubah kata kunci pencarian atau filter yang dipilih.',
+              _searchController.text.trim().isNotEmpty
+                  ? 'Tidak ada kendaraan yang cocok dengan "${_searchController.text.trim()}".'
+                  : 'Saat ini belum ada kendaraan yang tercatat di sistem.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.spInk3,
               ),
@@ -928,16 +935,14 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
     );
   }
 
-  Widget _buildVehicleCard(ParkedVehicleItem vehicle) {
+  Widget _buildVehicleCard(ActiveSession vehicle) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.spSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: vehicle.isRejected
-              ? AppColors.spDanger.withValues(alpha: 0.35)
-              : const Color(0x4DC2C7D0),
+          color: const Color(0x4DC2C7D0),
         ),
         boxShadow: [
           BoxShadow(
@@ -1006,36 +1011,30 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
               const SizedBox(width: 8),
 
               // Status Pill
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: vehicle.isRejected ? AppColors.spDangerBg : const Color(0xFFD1FAE5),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        vehicle.isRejected ? Icons.error_outline_rounded : Icons.check_circle_rounded,
-                        size: 12,
-                        color: vehicle.isRejected ? AppColors.spDangerInk : AppColors.spSuccessInk,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1FAE5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 12,
+                      color: AppColors.spSuccessInk,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Sedang Parkir',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.spSuccessInk,
                       ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          vehicle.isRejected ? 'Check-out Ditolak' : 'Sedang Parkir',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: vehicle.isRejected ? AppColors.spDangerInk : AppColors.spSuccessInk,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1069,7 +1068,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                       ],
                     ),
                     child: Text(
-                      vehicle.plateNumber,
+                      vehicle.plateIn,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1100,7 +1099,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                       ),
                     ),
                     Text(
-                      vehicle.duration,
+                      _formatDuration(vehicle.durationMinutes),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
@@ -1119,7 +1118,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0x66D3E4FE), // rgba(211, 228, 254, 0.4)
+              color: const Color(0x66D3E4FE),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1148,7 +1147,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                               ),
                             ),
                             Text(
-                              vehicle.entryTime,
+                              _formatTime(vehicle.checkedInAt),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1190,7 +1189,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                               ),
                             ),
                             Text(
-                              vehicle.entryGate,
+                              vehicle.areaName.isNotEmpty ? vehicle.areaName : widget.parkingLot,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1211,29 +1210,69 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
 
           const SizedBox(height: 12),
 
-          // Row 4: Detail Sesi Button
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: TextButton.icon(
-              onPressed: () => _showDetailModal(vehicle),
-              style: TextButton.styleFrom(
-                backgroundColor: AppColors.spTint3,
-                foregroundColor: AppColors.spPrimary700,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          // Row 4: Buttons (Detail Sesi & Check-Out)
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showDetailModal(vehicle),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.spPrimary700,
+                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                      backgroundColor: AppColors.spTint3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.assignment_outlined, size: 16),
+                    label: const Text(
+                      'Detail Sesi',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ),
               ),
-              icon: const Icon(Icons.assignment_outlined, size: 18),
-              label: const Text(
-                'Detail Sesi',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => CheckOutScreen(
+                            officerName: widget.officerName,
+                            officerRole: widget.officerRole,
+                            isSupervisor: widget.isSupervisor,
+                            parkingLot: vehicle.areaName.isNotEmpty
+                                ? vehicle.areaName
+                                : widget.parkingLot,
+                            nim: vehicle.nim,
+                            checkInPlate: vehicle.plateIn,
+                            checkInTime: _formatTime(vehicle.checkedInAt),
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.spPrimary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.logout_rounded, size: 16),
+                    label: const Text(
+                      'Check-Out',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -1245,10 +1284,18 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _showFeedback(
-          'Scan Check-Out',
-          'Membuka pemindai plat nomor untuk validasi keluar.',
-        ),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => CheckOutScreen(
+                officerName: widget.officerName,
+                officerRole: widget.officerRole,
+                isSupervisor: widget.isSupervisor,
+                parkingLot: widget.parkingLot,
+              ),
+            ),
+          );
+        },
         borderRadius: BorderRadius.circular(30),
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -1302,7 +1349,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                     ),
                   ),
                   Text(
-                    'Scan plat untuk mulai',
+                    'Buka validasi keluar',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,

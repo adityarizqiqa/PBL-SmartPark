@@ -1,24 +1,16 @@
 import 'package:flutter/material.dart';
+import '../api/api_client.dart';
+import '../api/api_exception.dart';
+import '../api/session_store.dart';
 import '../constants/app_colors.dart';
+import '../models/models.dart';
 import 'beranda_screen.dart';
 import 'beranda_spv_screen.dart';
 
-class OfficerItem {
-  final String id;
-  final String name;
-  final bool isSupervisor;
-  final String roleDescription;
-
-  const OfficerItem({
-    required this.id,
-    required this.name,
-    this.isSupervisor = false,
-    required this.roleDescription,
-  });
-}
-
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final ApiClient? apiClient;
+
+  const LoginScreen({super.key, this.apiClient});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -27,40 +19,23 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
+  late final ApiClient _apiClient = widget.apiClient ?? ApiClient();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isInitialLoading = true;
+  String? _initialError;
 
-  final List<OfficerItem> _officers = const [
-    OfficerItem(
-      id: '1',
-      name: 'Budi Santoso',
-      isSupervisor: false,
-      roleDescription: 'Petugas Gerbang',
-    ),
-    OfficerItem(
-      id: '2',
-      name: 'Dewi Kartika',
-      isSupervisor: true,
-      roleDescription: 'Pengawas (SPV)',
-    ),
-  ];
+  List<Officer> _officers = [];
+  Officer? _selectedOfficer;
 
-  late OfficerItem _selectedOfficer;
-
-  final List<String> _parkingLots = const [
-    'POS-UTAMA • Pos Parkir Utama',
-    'POS-TIMUR • Pos Gerbang Timur',
-    'POS-BARAT • Pos Parkir Barat',
-    'POS-MOTOR • Lahan Motor Mahasiswa',
-  ];
-
-  late String _selectedLot;
+  List<Area> _areas = [];
+  Area? _selectedArea;
 
   @override
   void initState() {
     super.initState();
-    _selectedOfficer = _officers.first;
-    _selectedLot = _parkingLots.first;
+    _fetchInitialData();
   }
 
   @override
@@ -69,8 +44,75 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _fetchInitialData() async {
+    setState(() {
+      _isInitialLoading = true;
+      _initialError = null;
+    });
+
+    try {
+      final officersData = await _apiClient.get('/api/officers');
+      final areasData = await _apiClient.get('/api/areas');
+
+      final officers = (officersData as List)
+          .map((e) => Officer.fromJson((e as Map).cast<String, dynamic>()))
+          .where((o) => o.isActive)
+          .toList();
+      final areas = (areasData as List)
+          .map((e) => Area.fromJson((e as Map).cast<String, dynamic>()))
+          .where((a) => a.isActive)
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _officers = officers;
+        _areas = areas;
+        if (_officers.isNotEmpty) {
+          _selectedOfficer = _officers.first;
+        }
+        if (_areas.isNotEmpty) {
+          _selectedArea = _areas.first;
+        }
+        _isInitialLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isInitialLoading = false;
+        _initialError = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isInitialLoading = false;
+        _initialError = 'Gagal memuat data: $e';
+      });
+    }
+  }
+
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final officer = _selectedOfficer;
+    if (officer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text('Pilih nama petugas terlebih dahulu.'),
+        ),
+      );
+      return;
+    }
+
+    if (!officer.isSupervisor && _selectedArea == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text('Pilih lahan parkir terlebih dahulu.'),
+        ),
+      );
       return;
     }
 
@@ -78,26 +120,128 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+    try {
+      if (officer.isSupervisor) {
+        final res = await _apiClient.post(
+          '/api/auth/sign-in',
+          body: {
+            'officer_id': officer.id,
+            'password': _passwordController.text.trim(),
+          },
+        );
 
+        final token = res['token'] as String;
+        final session = (res['session'] as Map).cast<String, dynamic>();
+
+        SessionStore.instance.setOfficerSession(
+          token: token,
+          id: session['officer_id'] as int,
+          name: session['officer_name'] as String,
+          userRole: session['role'] as String,
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.spPrimary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Sesi aktif: ${officer.name} (SPV)',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => BerandaSpvScreen(
+              officerName: officer.name,
+              officerRole: 'Pengawas (SPV)',
+            ),
+          ),
+        );
+      } else {
+        final area = _selectedArea!;
+        final res = await _apiClient.post(
+          '/api/shifts/join',
+          body: {
+            'officer_id': officer.id,
+            'password': _passwordController.text.trim(),
+            'parking_area_id': area.id,
+          },
+        );
+
+        final shiftLogin = ShiftLogin.fromJson(
+          (res as Map).cast<String, dynamic>(),
+        );
+
+        SessionStore.instance.setShiftSession(
+          shiftLogin,
+          userRole: officer.role,
+        );
+
+        if (!mounted) return;
+        final parkingLotStr = '${area.code} • ${area.name}';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.spPrimary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Sesi aktif: ${officer.name} (${area.code})',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => BerandaScreen(
+              officerName: officer.name,
+              officerRole: 'Petugas Gerbang',
+              isSupervisor: false,
+              parkingLot: parkingLotStr,
+            ),
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: AppColors.spPrimary,
+          backgroundColor: AppColors.spDanger,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
           content: Row(
             children: [
-              const Icon(Icons.check_circle_outline, color: Colors.white),
+              const Icon(Icons.error_outline, color: Colors.white),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Sesi aktif: ${_selectedOfficer.name} (${_selectedOfficer.isSupervisor ? "SPV" : _selectedLot.split(" • ").first})',
+                  e.message,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -105,23 +249,36 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       );
-
-      final Widget destination = _selectedOfficer.isSupervisor
-          ? BerandaSpvScreen(
-              officerName: _selectedOfficer.name,
-              officerRole: _selectedOfficer.roleDescription,
-            )
-          : BerandaScreen(
-              officerName: _selectedOfficer.name,
-              officerRole: _selectedOfficer.roleDescription,
-              isSupervisor: _selectedOfficer.isSupervisor,
-              parkingLot: _selectedLot,
-            );
-
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => destination),
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Gagal masuk: $e',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
-    });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -267,57 +424,120 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Input 1: Nama Petugas
-          _buildOfficerPickerField(),
-          const SizedBox(height: 16),
-
-          // Input 2: Password
-          _buildPasswordField(),
-          const SizedBox(height: 16),
-
-          // Input 3: Pilih Lahan Parkir
-          _buildParkingLotField(),
-          const SizedBox(height: 20),
-
-          // Submit Action Button
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _handleLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.spPrimary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          if (_isInitialLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Column(
+                  children: const [
+                    CircularProgressIndicator(
+                      color: AppColors.spPrimary,
+                      strokeWidth: 2.5,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Memuat data petugas & lahan...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.spInk3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.login_rounded, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Mulai Bertugas',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+            )
+          else if (_initialError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_rounded,
+                      size: 36,
+                      color: AppColors.spDanger,
                     ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _initialError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.spDanger,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _fetchInitialData,
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Coba Lagi'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.spPrimary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            // Input 1: Nama Petugas
+            _buildOfficerPickerField(),
+            const SizedBox(height: 16),
+
+            // Input 2: Password
+            _buildPasswordField(),
+            const SizedBox(height: 16),
+
+            // Input 3: Pilih Lahan Parkir
+            _buildParkingLotField(),
+            const SizedBox(height: 20),
+
+            // Submit Action Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.spPrimary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.login_rounded, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Mulai Bertugas',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -362,7 +582,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: List.generate(_officers.length, (index) {
                 final officer = _officers[index];
-                final isSelected = officer.id == _selectedOfficer.id;
+                final isSelected = officer.id == _selectedOfficer?.id;
                 final isLast = index == _officers.length - 1;
 
                 return Column(
@@ -561,7 +781,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Field 3: Pilih Lahan Parkir
   Widget _buildParkingLotField() {
-    final isSupervisor = _selectedOfficer.isSupervisor;
+    final isSupervisor = _selectedOfficer?.isSupervisor ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,12 +816,14 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
+        DropdownButtonFormField<Area>(
           isExpanded: true,
-          initialValue: _selectedLot,
+          initialValue: _selectedArea,
           decoration: InputDecoration(
             filled: true,
-            fillColor: isSupervisor ? AppColors.spTint1.withValues(alpha: 0.5) : AppColors.spTint1,
+            fillColor: isSupervisor
+                ? AppColors.spTint1.withValues(alpha: 0.5)
+                : AppColors.spTint1,
             prefixIcon: const Icon(
               Icons.location_on_outlined,
               size: 20,
@@ -631,11 +853,11 @@ class _LoginScreenState extends State<LoginScreen> {
             Icons.keyboard_arrow_down_rounded,
             color: AppColors.spInk2,
           ),
-          items: _parkingLots.map((String lot) {
-            return DropdownMenuItem<String>(
-              value: lot,
+          items: _areas.map((Area area) {
+            return DropdownMenuItem<Area>(
+              value: area,
               child: Text(
-                lot,
+                '${area.code} • ${area.name}',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -645,12 +867,18 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
           }).toList(),
-          onChanged: (String? newValue) {
+          onChanged: (Area? newValue) {
             if (newValue != null) {
               setState(() {
-                _selectedLot = newValue;
+                _selectedArea = newValue;
               });
             }
+          },
+          validator: (value) {
+            if (!isSupervisor && value == null) {
+              return 'Pilih lahan parkir terlebih dahulu';
+            }
+            return null;
           },
         ),
       ],

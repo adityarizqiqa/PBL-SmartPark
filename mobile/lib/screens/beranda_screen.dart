@@ -1,27 +1,14 @@
 import 'package:flutter/material.dart';
+import '../api/api_client.dart';
+import '../api/api_exception.dart';
+import '../api/session_store.dart';
 import '../constants/app_colors.dart';
+import '../models/models.dart';
 import 'login_screen.dart';
 import 'kendaraan_screen.dart';
 import 'riwayat_screen.dart';
 import 'checkin_screen.dart';
 import 'checkout_screen.dart';
-
-/// Model for parking activity log
-class ParkingActivityItem {
-  final String plateNumber;
-  final String nim;
-  final bool isCheckIn;
-  final String time;
-  final String status;
-
-  const ParkingActivityItem({
-    required this.plateNumber,
-    required this.nim,
-    required this.isCheckIn,
-    required this.time,
-    required this.status,
-  });
-}
 
 /// Screen 07 — Beranda Petugas SmartPark
 /// Mapped from Figma node 15:1299 (tmp/uiux/07-beranda-petugas.html)
@@ -30,6 +17,7 @@ class BerandaScreen extends StatefulWidget {
   final String officerRole;
   final bool isSupervisor;
   final String parkingLot;
+  final ApiClient? apiClient;
 
   const BerandaScreen({
     super.key,
@@ -37,6 +25,7 @@ class BerandaScreen extends StatefulWidget {
     this.officerRole = 'Petugas Gerbang',
     this.isSupervisor = false,
     this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
+    this.apiClient,
   });
 
   @override
@@ -44,54 +33,115 @@ class BerandaScreen extends StatefulWidget {
 }
 
 class _BerandaScreenState extends State<BerandaScreen> {
+  late final ApiClient _apiClient = widget.apiClient ?? ApiClient();
   int _selectedNavIndex = 0;
 
-  // Operational statistics matching prototype
-  final int _currentParked = 428;
-  final int _maxCapacity = 500;
-  final int _needVerification = 3;
-  final int _todayCheckIn = 852;
-  final int _todayCheckOut = 424;
+  // Operational statistics from GET /api/sessions/dashboard
+  int _currentParked = 0;
+  final int _maxCapacity = 500; // Static per master-plan
+  final int _needVerification = 3; // Static per master-plan
+  int _todayCheckIn = 0;
+  int _todayCheckOut = 0;
+  List<SessionDetail> _recentSessions = [];
 
-  // Recent activity sample data from Figma / HTML prototype
-  final List<ParkingActivityItem> _activities = const [
-    ParkingActivityItem(
-      plateNumber: 'N 1234 ABC',
-      nim: 'NIM 244107020204',
-      isCheckIn: true,
-      time: '07:32 WIB',
-      status: 'Sesuai',
-    ),
-    ParkingActivityItem(
-      plateNumber: 'B 4567 KLA',
-      nim: 'NIM 214107020055',
-      isCheckIn: false,
-      time: '07:45 WIB',
-      status: 'Sesuai',
-    ),
-    ParkingActivityItem(
-      plateNumber: 'N 8921 DEF',
-      nim: 'NIM 234107020118',
-      isCheckIn: true,
-      time: '07:51 WIB',
-      status: 'Sesuai',
-    ),
-  ];
+  bool _isLoadingDashboard = false;
+  String? _dashboardError;
+
+  String get _officerName =>
+      SessionStore.instance.officerName ?? widget.officerName;
+
+  String get _officerRole =>
+      SessionStore.instance.role == 'spv'
+          ? 'Pengawas (SPV)'
+          : (widget.officerRole.isNotEmpty ? widget.officerRole : 'Petugas Gerbang');
+
+  bool get _isSupervisor =>
+      SessionStore.instance.isSupervisor || widget.isSupervisor;
+
+  String get _parkingLot {
+    if (SessionStore.instance.areaName != null) {
+      return SessionStore.instance.areaName!;
+    }
+    return widget.parkingLot;
+  }
 
   // Helper to extract POS short code (e.g., "POS-01" or "POS-UTAMA")
   String get _posShortCode {
-    if (widget.parkingLot.contains('•')) {
-      return widget.parkingLot.split('•').first.trim();
+    final lot = _parkingLot;
+    if (lot.contains('•')) {
+      return lot.split('•').first.trim();
     }
-    return 'POS-01';
+    return lot;
   }
 
   // Helper to extract POS full name
   String get _posFullName {
-    if (widget.parkingLot.contains('•')) {
-      return widget.parkingLot.split('•').last.trim();
+    final lot = _parkingLot;
+    if (lot.contains('•')) {
+      return lot.split('•').last.trim();
     }
-    return widget.parkingLot;
+    return lot;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboard();
+  }
+
+  Future<void> _loadDashboard() async {
+    setState(() {
+      _isLoadingDashboard = true;
+      _dashboardError = null;
+    });
+
+    try {
+      final res = await _apiClient.get('/api/sessions/dashboard');
+      if (res is Map<String, dynamic> || res is Map) {
+        final dashboard =
+            Dashboard.fromJson((res as Map).cast<String, dynamic>());
+        if (!mounted) return;
+        setState(() {
+          _currentParked = dashboard.activeNow;
+          _todayCheckIn = dashboard.checkedInToday;
+          _todayCheckOut = dashboard.checkedOutToday;
+          _recentSessions = dashboard.recent;
+          _isLoadingDashboard = false;
+        });
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 401 ||
+          e.code == 'assignment_not_found' ||
+          e.code == 'session_expired') {
+        SessionStore.instance.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.spDanger,
+            content: Text(
+              e.message.isNotEmpty
+                  ? e.message
+                  : 'Sesi Anda telah berakhir. Silakan masuk kembali.',
+            ),
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+        return;
+      }
+      setState(() {
+        _isLoadingDashboard = false;
+        _dashboardError = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingDashboard = false;
+        _dashboardError = 'Gagal memuat dashboard: $e';
+      });
+    }
   }
 
   void _handleLogout() {
@@ -104,18 +154,20 @@ class _BerandaScreenState extends State<BerandaScreen> {
           children: const [
             Icon(Icons.logout_rounded, color: AppColors.spDanger, size: 24),
             SizedBox(width: 10),
-            Text(
-              'Akhiri Sesi Pos?',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.spInk,
+            Expanded(
+              child: Text(
+                'Akhiri Sesi Pos?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.spInk,
+                ),
               ),
             ),
           ],
         ),
         content: Text(
-          'Anda akan keluar dari sesi ${widget.officerName} di $_posFullName.',
+          'Anda akan keluar dari sesi $_officerName di $_posFullName.',
           style: const TextStyle(
             fontSize: 14,
             color: AppColors.spInk2,
@@ -134,11 +186,30 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
+              try {
+                if (SessionStore.instance.hasShift) {
+                  await _apiClient.post(
+                    '/api/shifts/leave',
+                    body: {'note': 'Petugas keluar'},
+                  );
+                } else if (SessionStore.instance.hasOfficerSession) {
+                  await _apiClient.post('/api/auth/sign-out');
+                }
+              } catch (_) {
+                // Biarkan sesi lokal tetap dihapus meski server galat/mati
+              } finally {
+                SessionStore.instance.clear();
+                if (mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => LoginScreen(apiClient: _apiClient),
+                    ),
+                    (route) => false,
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spDanger,
@@ -208,10 +279,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 Expanded(
                   child: RefreshIndicator(
                     color: AppColors.spPrimary,
-                    onRefresh: () async {
-                      await Future.delayed(const Duration(milliseconds: 400));
-                      if (mounted) setState(() {});
-                    },
+                    onRefresh: _loadDashboard,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -219,6 +287,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildStatusBar(),
+                          if (_dashboardError != null) ...[
+                            const SizedBox(height: 10),
+                            _buildErrorBanner(),
+                          ],
                           const SizedBox(height: 12),
                           _buildProfileCard(),
                           const SizedBox(height: 16),
@@ -238,6 +310,39 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.spDanger.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: AppColors.spDanger, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _dashboardError!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.spDanger,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 18, color: AppColors.spDanger),
+            onPressed: _loadDashboard,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          ),
+        ],
       ),
     );
   }
@@ -340,6 +445,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (_isLoadingDashboard)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.spPrimary,
+                    ),
+                  ),
+                ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -438,7 +555,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
               Icon(Icons.wifi, size: 14, color: AppColors.spPrimary600),
               SizedBox(width: 5),
               Text(
-                '07:54 WIB',
+                'Terhubung',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -558,7 +675,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        '${widget.officerName} • ${widget.officerRole}',
+                        '$_officerName • $_officerRole',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -655,17 +772,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {
-              Navigator.of(context).push(
+            onTap: () async {
+              await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => CheckInScreen(
-                    officerName: widget.officerName,
-                    officerRole: widget.officerRole,
-                    isSupervisor: widget.isSupervisor,
-                    parkingLot: widget.parkingLot,
+                    officerName: _officerName,
+                    officerRole: _officerRole,
+                    isSupervisor: _isSupervisor,
+                    parkingLot: _parkingLot,
                   ),
                 ),
               );
+              _loadDashboard();
             },
             borderRadius: BorderRadius.circular(12),
             child: Ink(
@@ -785,17 +903,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {
-              Navigator.of(context).push(
+            onTap: () async {
+              await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => CheckOutScreen(
-                    officerName: widget.officerName,
-                    officerRole: widget.officerRole,
-                    isSupervisor: widget.isSupervisor,
-                    parkingLot: widget.parkingLot,
+                    officerName: _officerName,
+                    officerRole: _officerRole,
+                    isSupervisor: _isSupervisor,
+                    parkingLot: _parkingLot,
                   ),
                 ),
               );
+              _loadDashboard();
             },
             borderRadius: BorderRadius.circular(12),
             child: Ink(
@@ -914,7 +1033,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
   /// 5. Ringkasan Statistik Operasional Real-Time & Kapasitas Lahan
   Widget _buildOperationalStats() {
-    final occupancyPercent = (_currentParked / _maxCapacity * 100).toInt();
+    final occupancyPercent = _maxCapacity > 0
+        ? (_currentParked / _maxCapacity * 100).toInt()
+        : 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -946,10 +1067,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => KendaraanScreen(
-                        officerName: widget.officerName,
-                        officerRole: widget.officerRole,
-                        isSupervisor: widget.isSupervisor,
-                        parkingLot: widget.parkingLot,
+                        officerName: _officerName,
+                        officerRole: _officerRole,
+                        isSupervisor: _isSupervisor,
+                        parkingLot: _parkingLot,
                       ),
                     ),
                   );
@@ -970,10 +1091,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => KendaraanScreen(
-                        officerName: widget.officerName,
-                        officerRole: widget.officerRole,
-                        isSupervisor: widget.isSupervisor,
-                        parkingLot: widget.parkingLot,
+                        officerName: _officerName,
+                        officerRole: _officerRole,
+                        isSupervisor: _isSupervisor,
+                        parkingLot: _parkingLot,
                       ),
                     ),
                   );
@@ -1009,7 +1130,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
         const SizedBox(height: 10),
 
-        // Capacity Progress Card
+        // Capacity Progress Card (Static 500 slot per master plan)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1051,7 +1172,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
-                  value: _currentParked / _maxCapacity,
+                  value: _maxCapacity > 0 ? (_currentParked / _maxCapacity).clamp(0.0, 1.0) : 0,
                   minHeight: 8,
                   backgroundColor: AppColors.spTint2,
                   valueColor: AlwaysStoppedAnimation<Color>(
@@ -1098,56 +1219,56 @@ class _BerandaScreenState extends State<BerandaScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.spInk3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(icon, size: 16, color: valueColor.withValues(alpha: 0.7)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: valueColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: badgeColor ?? AppColors.spTint1,
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.spInk3,
+                  badgeText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: badgeTextColor ?? AppColors.spPrimary600,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(icon, size: 16, color: valueColor.withValues(alpha: 0.7)),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-              color: valueColor,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: badgeColor ?? AppColors.spTint1,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              badgeText,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: badgeTextColor ?? AppColors.spPrimary600,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 
   /// 6. Log Aktivitas Terbaru di Pos
@@ -1180,10 +1301,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => RiwayatScreen(
-                      officerName: widget.officerName,
-                      officerRole: widget.officerRole,
-                      isSupervisor: widget.isSupervisor,
-                      parkingLot: widget.parkingLot,
+                      officerName: _officerName,
+                      officerRole: _officerRole,
+                      isSupervisor: _isSupervisor,
+                      parkingLot: _parkingLot,
                     ),
                   ),
                 );
@@ -1206,22 +1327,92 @@ class _BerandaScreenState extends State<BerandaScreen> {
         ),
         const SizedBox(height: 8),
 
-        // Activity List
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _activities.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 8),
-          itemBuilder: (context, index) {
-            final act = _activities[index];
-            return _buildActivityCard(act);
-          },
-        ),
+        if (_recentSessions.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.spSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.spBorder),
+            ),
+            child: Center(
+              child: Column(
+                children: const [
+                  Icon(Icons.inbox_outlined, size: 36, color: AppColors.spInk4),
+                  SizedBox(height: 8),
+                  Text(
+                    'Belum ada aktivitas sesi di pos ini',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.spInk3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _recentSessions.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final session = _recentSessions[index];
+              return _buildActivityCard(session);
+            },
+          ),
       ],
     );
   }
 
-  Widget _buildActivityCard(ParkingActivityItem act) {
+  String _formatTime(DateTime dt) {
+    final local = dt.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute WIB';
+  }
+
+  Widget _buildActivityCard(SessionDetail session) {
+    final bool isCheckIn = session.status == 'active';
+    final String plateNumber =
+        (session.plateOut != null && session.plateOut!.isNotEmpty)
+            ? session.plateOut!
+            : session.plateIn;
+    final String timeStr = session.checkedOutAt != null
+        ? _formatTime(session.checkedOutAt!)
+        : _formatTime(session.checkedInAt);
+
+    String statusLabel;
+    Color statusColor;
+    IconData statusIcon;
+
+    switch (session.status) {
+      case 'matched':
+        statusLabel = 'Sesuai';
+        statusColor = AppColors.spPrimary600;
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      case 'manual_verified':
+        statusLabel = 'Verifikasi Manual';
+        statusColor = AppColors.spWarn;
+        statusIcon = Icons.assignment_turned_in_rounded;
+        break;
+      case 'voided':
+        statusLabel = 'Dibatalkan';
+        statusColor = AppColors.spDanger;
+        statusIcon = Icons.cancel_rounded;
+        break;
+      case 'active':
+      default:
+        statusLabel = 'Sedang Parkir';
+        statusColor = AppColors.spPrimary600;
+        statusIcon = Icons.local_parking_rounded;
+        break;
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1260,7 +1451,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                         ],
                       ),
                       child: Text(
-                        act.plateNumber,
+                        plateNumber,
                         style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 12,
@@ -1273,7 +1464,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        act.nim,
+                        'NIM ${session.nim}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1292,24 +1483,24 @@ class _BerandaScreenState extends State<BerandaScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: act.isCheckIn ? const Color(0xFFD0E4FF) : AppColors.spTint5,
+                  color: isCheckIn ? const Color(0xFFD0E4FF) : AppColors.spTint5,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      act.isCheckIn ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                      isCheckIn ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
                       size: 11,
-                      color: act.isCheckIn ? const Color(0xFF114976) : AppColors.spPrimary800,
+                      color: isCheckIn ? const Color(0xFF114976) : AppColors.spPrimary800,
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      act.isCheckIn ? 'Masuk' : 'Keluar',
+                      isCheckIn ? 'Masuk' : 'Keluar',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: act.isCheckIn ? const Color(0xFF114976) : AppColors.spPrimary800,
+                        color: isCheckIn ? const Color(0xFF114976) : AppColors.spPrimary800,
                       ),
                     ),
                   ],
@@ -1340,7 +1531,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      act.time,
+                      timeStr,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1351,19 +1542,19 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Icon(
-                      Icons.check_circle_rounded,
+                      statusIcon,
                       size: 13,
-                      color: AppColors.spPrimary600,
+                      color: statusColor,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
-                      'Sesuai',
+                      statusLabel,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.spPrimary600,
+                        color: statusColor,
                       ),
                     ),
                   ],
@@ -1399,10 +1590,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => KendaraanScreen(
-                  officerName: widget.officerName,
-                  officerRole: widget.officerRole,
-                  isSupervisor: widget.isSupervisor,
-                  parkingLot: widget.parkingLot,
+                  officerName: _officerName,
+                  officerRole: _officerRole,
+                  isSupervisor: _isSupervisor,
+                  parkingLot: _parkingLot,
                 ),
               ),
             );
@@ -1410,10 +1601,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => RiwayatScreen(
-                  officerName: widget.officerName,
-                  officerRole: widget.officerRole,
-                  isSupervisor: widget.isSupervisor,
-                  parkingLot: widget.parkingLot,
+                  officerName: _officerName,
+                  officerRole: _officerRole,
+                  isSupervisor: _isSupervisor,
+                  parkingLot: _parkingLot,
                 ),
               ),
             );

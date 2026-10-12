@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
+import '../api/api_client.dart';
+import '../api/api_exception.dart';
+import '../api/session_store.dart';
 import '../constants/app_colors.dart';
+import '../models/models.dart';
 import '../widgets/spv_app_bar.dart';
 import '../widgets/spv_bottom_nav.dart';
 import 'login_screen.dart';
 
-/// Data model for a parking lot (lahan parkir)
-class ParkingLotItem {
-  final String code;
-  String name;
-  bool isActive;
-  int openShifts;
-
-  ParkingLotItem({
-    required this.code,
-    required this.name,
-    this.isActive = true,
-    this.openShifts = 0,
-  });
-}
-
 /// Kelola Lahan Parkir — Konsol Pengawas (SPV)
 /// Mapped from tmp/uiux/14-kelola-lahan.html
+///
+/// Daftar, tambah, ubah nama, dan aktif/nonaktif lahan ditulis ke backend
+/// lewat `/api/areas` memakai token pengawas.
 class KelolaLahanScreen extends StatefulWidget {
   final String officerName;
   final String officerRole;
@@ -36,27 +28,21 @@ class KelolaLahanScreen extends StatefulWidget {
 }
 
 class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
+  final ApiClient _api = ApiClient();
   final TextEditingController _kodeController = TextEditingController();
   final TextEditingController _namaController = TextEditingController();
 
-  final List<ParkingLotItem> _lots = [
-    ParkingLotItem(
-      code: 'POS-UTAMA',
-      name: 'Pos Parkir Utama',
-      isActive: true,
-      openShifts: 1,
-    ),
-    ParkingLotItem(
-      code: 'POS-CLIMBING',
-      name: 'Pos Parkir Climbing',
-      isActive: true,
-    ),
-    ParkingLotItem(
-      code: 'POS-FT',
-      name: 'Pos Parkir Fakultas Teknik',
-      isActive: false,
-    ),
-  ];
+  List<Area> _areas = const [];
+  Map<int, int> _openShiftCounts = const {};
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -65,8 +51,47 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
     super.dispose();
   }
 
-  int get _activeCount => _lots.where((lot) => lot.isActive).length;
-  int get _inactiveCount => _lots.where((lot) => !lot.isActive).length;
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final areasJson = await _api.get(
+        '/api/areas',
+        query: {'include_inactive': true},
+      );
+      final shiftsJson = await _api.get(
+        '/api/shifts',
+        query: {'open_only': true},
+      );
+      if (!mounted) return;
+
+      final counts = <int, int>{};
+      for (final raw in shiftsJson as List) {
+        final shift = Shift.fromJson((raw as Map).cast<String, dynamic>());
+        counts[shift.parkingAreaId] = (counts[shift.parkingAreaId] ?? 0) + 1;
+      }
+
+      setState(() {
+        _areas = (areasJson as List)
+            .map((e) => Area.fromJson((e as Map).cast<String, dynamic>()))
+            .toList();
+        _openShiftCounts = counts;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    }
+  }
+
+  int get _activeCount => _areas.where((area) => area.isActive).length;
+  int get _inactiveCount => _areas.where((area) => !area.isActive).length;
 
   void _showFeedback(String title, String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -107,7 +132,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
     );
   }
 
-  void _handleAdd() {
+  Future<void> _handleAdd() async {
     final code = _kodeController.text.trim().toUpperCase();
     final name = _namaController.text.trim();
 
@@ -120,47 +145,58 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
       return;
     }
 
-    if (_lots.any((lot) => lot.code == code)) {
-      _showFeedback(
-        'Kode sudah dipakai',
-        'Kode lahan $code sudah terdaftar.',
-        isError: true,
-      );
-      return;
+    setState(() => _saving = true);
+    try {
+      await _api.post('/api/areas', body: {'code': code, 'name': name});
+      if (!mounted) return;
+      _kodeController.clear();
+      _namaController.clear();
+      FocusScope.of(context).unfocus();
+      _showFeedback('Lahan ditambahkan', '$name ($code) berhasil ditambahkan.');
+      await _load();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _showFeedback('Gagal menambah lahan', e.message, isError: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-
-    setState(() {
-      _lots.add(ParkingLotItem(code: code, name: name));
-    });
-    _kodeController.clear();
-    _namaController.clear();
-    FocusScope.of(context).unfocus();
-    _showFeedback('Lahan ditambahkan', '$name ($code) berhasil ditambahkan.');
   }
 
-  void _toggleActive(ParkingLotItem lot) {
-    if (lot.isActive && lot.openShifts > 0) {
+  Future<void> _toggleActive(Area area) async {
+    final openShifts = _openShiftCounts[area.id] ?? 0;
+    if (area.isActive && openShifts > 0) {
       _showFeedback(
         'Tidak bisa dinonaktifkan',
-        'Tutup ${lot.openShifts} shift terbuka di lahan ini terlebih dahulu.',
+        'Tutup $openShifts shift terbuka di lahan ini terlebih dahulu.',
         isError: true,
       );
       return;
     }
 
-    setState(() {
-      lot.isActive = !lot.isActive;
-    });
-    _showFeedback(
-      lot.isActive ? 'Lahan diaktifkan' : 'Lahan dinonaktifkan',
-      lot.isActive
-          ? '${lot.name} kembali muncul saat mulai bertugas.'
-          : '${lot.name} disembunyikan dari daftar pilih saat mulai bertugas.',
-    );
+    setState(() => _saving = true);
+    try {
+      await _api.patch(
+        '/api/areas/${area.id}',
+        body: {'is_active': !area.isActive},
+      );
+      if (!mounted) return;
+      _showFeedback(
+        area.isActive ? 'Lahan dinonaktifkan' : 'Lahan diaktifkan',
+        area.isActive
+            ? '${area.name} disembunyikan dari daftar pilih saat mulai bertugas.'
+            : '${area.name} kembali muncul saat mulai bertugas.',
+      );
+      await _load();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _showFeedback('Gagal mengubah lahan', e.message, isError: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
-  Future<void> _editLot(ParkingLotItem lot) async {
-    final controller = TextEditingController(text: lot.name);
+  Future<void> _editLot(Area area) async {
+    final controller = TextEditingController(text: area.name);
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -228,15 +264,37 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
         ],
       ),
     );
-
-    final trimmed = newName?.trim() ?? '';
-    if (trimmed.isNotEmpty && trimmed != lot.name) {
-      setState(() {
-        lot.name = trimmed;
-      });
-      _showFeedback('Lahan diperbarui', 'Nama lahan menjadi "$trimmed".');
-    }
     controller.dispose();
+
+    if (!mounted) return;
+    final trimmed = newName?.trim() ?? '';
+    if (trimmed.isEmpty || trimmed == area.name) return;
+
+    setState(() => _saving = true);
+    try {
+      await _api.patch('/api/areas/${area.id}', body: {'name': trimmed});
+      if (!mounted) return;
+      _showFeedback('Lahan diperbarui', 'Nama lahan menjadi "$trimmed".');
+      await _load();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _showFeedback('Gagal memperbarui lahan', e.message, isError: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _doLogout() async {
+    try {
+      await _api.post('/api/auth/sign-out');
+    } on ApiException {
+      // Abaikan; tetap keluar dari aplikasi.
+    }
+    SessionStore.instance.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
   }
 
   void _handleLogout() {
@@ -271,9 +329,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
+              _doLogout();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spDanger,
@@ -305,23 +361,27 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
               children: [
                 SpvAppBar(pageTitle: 'Kelola Lahan', onLogout: _handleLogout),
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeading(),
-                        const SizedBox(height: 16),
-                        _buildStatsRow(),
-                        const SizedBox(height: 16),
-                        _buildAddForm(),
-                        const SizedBox(height: 16),
-                        _buildLotList(),
-                        const SizedBox(height: 16),
-                        _buildNote(),
-                        const SizedBox(height: 16),
-                      ],
+                  child: RefreshIndicator(
+                    onRefresh: _load,
+                    color: AppColors.spPrimary,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeading(),
+                          const SizedBox(height: 16),
+                          _buildStatsRow(),
+                          const SizedBox(height: 16),
+                          _buildAddForm(),
+                          const SizedBox(height: 16),
+                          _buildLotList(),
+                          const SizedBox(height: 16),
+                          _buildNote(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -362,7 +422,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
       children: [
         Expanded(
           child: _buildStatCard(
-            value: '${_lots.length}',
+            value: _loading ? '…' : '${_areas.length}',
             label: 'LAHAN',
             valueColor: AppColors.spPrimary,
           ),
@@ -370,7 +430,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: _buildStatCard(
-            value: '$_activeCount',
+            value: _loading ? '…' : '$_activeCount',
             label: 'AKTIF',
             valueColor: AppColors.spSuccessInk,
           ),
@@ -378,7 +438,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: _buildStatCard(
-            value: '$_inactiveCount',
+            value: _loading ? '…' : '$_inactiveCount',
             label: 'NONAKTIF',
             valueColor: AppColors.spInk3,
           ),
@@ -502,8 +562,17 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: _handleAdd,
-              icon: const Icon(Icons.add_rounded, size: 20),
+              onPressed: _saving ? null : _handleAdd,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.add_rounded, size: 20),
               label: const Text(
                 'Tambah Lahan',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
@@ -611,7 +680,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
               ),
             ),
             Text(
-              '${_lots.length} lahan terdaftar',
+              _loading ? 'Memuat…' : '${_areas.length} lahan terdaftar',
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -621,13 +690,114 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        ..._lots.map(_buildLotCard),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.spPrimary),
+            ),
+          )
+        else if (_error != null)
+          _buildErrorBanner(_error!)
+        else if (_areas.isEmpty)
+          _buildEmptyState()
+        else
+          ..._areas.map(_buildLotCard),
       ],
     );
   }
 
-  Widget _buildLotCard(ParkingLotItem lot) {
-    final hasOpenShift = lot.openShifts > 0;
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.spDangerBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.error_outline_rounded,
+                  size: 18, color: AppColors.spDanger),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Gagal memuat lahan',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.spDangerInk,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              color: AppColors.spDangerInk,
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Coba lagi'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.spDangerInk,
+              side: const BorderSide(color: AppColors.spDanger),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.spSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.spBorder),
+      ),
+      child: Column(
+        children: const [
+          Icon(Icons.map_outlined, size: 40, color: AppColors.spInk4),
+          SizedBox(height: 10),
+          Text(
+            'Belum ada lahan',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.spInk,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Tambahkan lahan parkir pertama lewat formulir di atas.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: AppColors.spInk3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLotCard(Area area) {
+    final openShifts = _openShiftCounts[area.id] ?? 0;
+    final hasOpenShift = openShifts > 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -655,7 +825,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      lot.code,
+                      area.code,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -665,7 +835,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      lot.name,
+                      area.name,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -679,16 +849,16 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: lot.isActive ? AppColors.spTint3 : AppColors.spDangerBg,
+                  color: area.isActive ? AppColors.spTint3 : AppColors.spDangerBg,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  lot.isActive ? 'AKTIF' : 'NONAKTIF',
+                  area.isActive ? 'AKTIF' : 'NONAKTIF',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
-                    color: lot.isActive
+                    color: area.isActive
                         ? AppColors.spInk2
                         : AppColors.spDangerInk,
                   ),
@@ -718,7 +888,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
                 const SizedBox(width: 6),
                 Text(
                   hasOpenShift
-                      ? 'Shift terbuka: ${lot.openShifts}'
+                      ? 'Shift terbuka: $openShifts'
                       : 'Tidak ada shift terbuka',
                   style: TextStyle(
                     fontSize: 12,
@@ -737,7 +907,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _editLot(lot),
+                  onPressed: _saving ? null : () => _editLot(area),
                   icon: const Icon(Icons.edit_outlined, size: 16),
                   label: const Text('Ubah'),
                   style: OutlinedButton.styleFrom(
@@ -754,14 +924,14 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _toggleActive(lot),
+                  onPressed: _saving ? null : () => _toggleActive(area),
                   icon: Icon(
-                    lot.isActive
+                    area.isActive
                         ? Icons.power_settings_new_rounded
                         : Icons.check_circle_outline_rounded,
                     size: 16,
                   ),
-                  label: Text(lot.isActive ? 'Nonaktifkan' : 'Aktifkan'),
+                  label: Text(area.isActive ? 'Nonaktifkan' : 'Aktifkan'),
                   style: OutlinedButton.styleFrom(
                     backgroundColor: AppColors.spTint1,
                     foregroundColor: AppColors.spPrimary,

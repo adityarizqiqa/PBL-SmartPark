@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import '../api/api_client.dart';
+import '../api/api_exception.dart';
+import '../api/session_store.dart';
 import '../constants/app_colors.dart';
+import '../models/models.dart';
 import '../widgets/spv_app_bar.dart';
 import '../widgets/spv_bottom_nav.dart';
 import 'kelola_lahan_screen.dart';
@@ -10,7 +14,11 @@ import 'login_screen.dart';
 /// Beranda Pengawas (SPV)
 /// Hub for the supervisor console: Kelola Lahan & Kelola Shift.
 /// Styled after the SPV screens in tmp/uiux/14-16.
-class BerandaSpvScreen extends StatelessWidget {
+///
+/// Ringkasan operasional diambil dari backend (`/api/areas` dan
+/// `/api/shifts?open_only=true`) memakai token pengawas. Elemen yang tidak
+/// punya padanan backend tetap statis.
+class BerandaSpvScreen extends StatefulWidget {
   final String officerName;
   final String officerRole;
 
@@ -19,6 +27,74 @@ class BerandaSpvScreen extends StatelessWidget {
     this.officerName = 'Dewi Kartika',
     this.officerRole = 'Pengawas (SPV)',
   });
+
+  @override
+  State<BerandaSpvScreen> createState() => _BerandaSpvScreenState();
+}
+
+class _BerandaSpvScreenState extends State<BerandaSpvScreen> {
+  final ApiClient _api = ApiClient();
+
+  List<Area> _areas = const [];
+  List<Shift> _openShifts = const [];
+  bool _loading = true;
+  String? _error;
+
+  /// Nama petugas diambil dari sesi yang sedang aktif.
+  String get _name => SessionStore.instance.officerName ?? widget.officerName;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final areasJson = await _api.get(
+        '/api/areas',
+        query: {'include_inactive': true},
+      );
+      final shiftsJson = await _api.get(
+        '/api/shifts',
+        query: {'open_only': true},
+      );
+      if (!mounted) return;
+      setState(() {
+        _areas = (areasJson as List)
+            .map((e) => Area.fromJson((e as Map).cast<String, dynamic>()))
+            .toList();
+        _openShifts = (shiftsJson as List)
+            .map((e) => Shift.fromJson((e as Map).cast<String, dynamic>()))
+            .toList();
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _doLogout() async {
+    try {
+      await _api.post('/api/auth/sign-out');
+    } on ApiException {
+      // Token mungkin sudah mati; tetap lanjut keluar dari aplikasi.
+    }
+    SessionStore.instance.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+  }
 
   void _handleLogout(BuildContext context) {
     showDialog(
@@ -52,9 +128,7 @@ class BerandaSpvScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
+              _doLogout();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spDanger,
@@ -89,28 +163,32 @@ class BerandaSpvScreen extends StatelessWidget {
                   onLogout: () => _handleLogout(context),
                 ),
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildProfileCard(),
-                        const SizedBox(height: 16),
-                        _buildConsoleSection(context),
-                        const SizedBox(height: 16),
-                        _buildStatsSection(),
-                        const SizedBox(height: 16),
-                        _buildNote(),
-                        const SizedBox(height: 16),
-                      ],
+                  child: RefreshIndicator(
+                    onRefresh: _load,
+                    color: AppColors.spPrimary,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildProfileCard(),
+                          const SizedBox(height: 16),
+                          _buildConsoleSection(context),
+                          const SizedBox(height: 16),
+                          _buildStatsSection(),
+                          const SizedBox(height: 16),
+                          _buildNote(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 SpvBottomNav(
                   currentIndex: 0,
-                  officerName: officerName,
-                  officerRole: officerRole,
+                  officerName: _name,
+                  officerRole: widget.officerRole,
                   onLogout: () => _handleLogout(context),
                 ),
               ],
@@ -182,7 +260,7 @@ class BerandaSpvScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  officerName,
+                  _name,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -201,7 +279,7 @@ class BerandaSpvScreen extends StatelessWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        officerRole,
+                        widget.officerRole,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -295,8 +373,8 @@ class BerandaSpvScreen extends StatelessWidget {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (_) => KelolaLahanScreen(
-                  officerName: officerName,
-                  officerRole: officerRole,
+                  officerName: _name,
+                  officerRole: widget.officerRole,
                 ),
               ),
             );
@@ -313,8 +391,8 @@ class BerandaSpvScreen extends StatelessWidget {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (_) => KelolaShiftScreen(
-                  officerName: officerName,
-                  officerRole: officerRole,
+                  officerName: _name,
+                  officerRole: widget.officerRole,
                 ),
               ),
             );
@@ -331,8 +409,8 @@ class BerandaSpvScreen extends StatelessWidget {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (_) => KelolaPetugasScreen(
-                  officerName: officerName,
-                  officerRole: officerRole,
+                  officerName: _name,
+                  officerRole: widget.officerRole,
                 ),
               ),
             );
@@ -438,6 +516,12 @@ class BerandaSpvScreen extends StatelessWidget {
   }
 
   Widget _buildStatsSection() {
+    final total = _areas.length;
+    final active = _areas.where((area) => area.isActive).length;
+    final running = _openShifts.length;
+
+    String value(int count) => _loading ? '…' : '$count';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -453,12 +537,16 @@ class BerandaSpvScreen extends StatelessWidget {
             ),
           ),
         ),
+        if (_error != null) ...[
+          _buildErrorBanner(_error!),
+          const SizedBox(height: 10),
+        ],
         Row(
           children: [
             Expanded(
               child: _buildStatCard(
                 label: 'Lahan',
-                value: '3',
+                value: value(total),
                 valueColor: AppColors.spPrimary,
               ),
             ),
@@ -466,7 +554,7 @@ class BerandaSpvScreen extends StatelessWidget {
             Expanded(
               child: _buildStatCard(
                 label: 'Aktif',
-                value: '2',
+                value: value(active),
                 valueColor: AppColors.spSuccessInk,
               ),
             ),
@@ -474,13 +562,62 @@ class BerandaSpvScreen extends StatelessWidget {
             Expanded(
               child: _buildStatCard(
                 label: 'Shift Berjalan',
-                value: '1',
+                value: value(running),
                 valueColor: AppColors.spPrimary600,
               ),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.spDangerBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 18,
+            color: AppColors.spDanger,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: AppColors.spDangerInk,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: _loading ? null : _load,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Coba lagi',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.spDangerInk,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -17,13 +17,13 @@ class ApiClient {
       : _client = client ?? http.Client(),
         baseUrl = baseUrl ?? defaultBaseUrl;
 
-  static const String _emulatorBaseUrl = 'http://10.0.2.2:8000';
+  static const String _defaultUrl = 'http://4.213.226.116:9876';
 
   /// Alamat dasar efektif: `--dart-define=API_BASE_URL` bila ada, jika tidak
-  /// alamat emulator.
+  /// alamat backend default.
   static String get defaultBaseUrl {
     const fromEnv = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-    return fromEnv.isEmpty ? _emulatorBaseUrl : fromEnv;
+    return fromEnv.isEmpty ? _defaultUrl : fromEnv;
   }
 
   final http.Client _client;

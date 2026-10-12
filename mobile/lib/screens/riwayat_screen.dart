@@ -1,42 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../api/api_client.dart';
+import '../api/api_exception.dart';
 import '../constants/app_colors.dart';
+import '../models/models.dart';
 import 'beranda_screen.dart';
 import 'kendaraan_screen.dart';
-
-enum RiwayatStatusType {
-  sesuai,
-  verifikasiManual,
-  ditolakAktif,
-}
-
-/// Data model for parking history transaction session
-class ParkingHistoryItem {
-  final String id;
-  final String plateNumber;
-  final String? attemptedExitPlate;
-  final String nim;
-  final String ownerName;
-  final RiwayatStatusType statusType;
-  final String entryTime;
-  final String exitTime;
-  final String duration;
-  final String? note;
-  final String gateName;
-
-  const ParkingHistoryItem({
-    required this.id,
-    required this.plateNumber,
-    this.attemptedExitPlate,
-    required this.nim,
-    required this.ownerName,
-    required this.statusType,
-    required this.entryTime,
-    required this.exitTime,
-    required this.duration,
-    this.note,
-    this.gateName = 'Pos Parkir Utama',
-  });
-}
 
 /// Screen 04 — Riwayat Sesi Parkir
 /// Mapped from Figma node 15:608 (tmp/uiux/04-riwayat-transaksi-parkir.html)
@@ -45,14 +14,16 @@ class RiwayatScreen extends StatefulWidget {
   final String officerRole;
   final bool isSupervisor;
   final String parkingLot;
+  final ApiClient apiClient;
 
-  const RiwayatScreen({
+  RiwayatScreen({
     super.key,
     this.officerName = 'Budi Santoso',
     this.officerRole = 'Petugas Gerbang',
     this.isSupervisor = false,
     this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
-  });
+    ApiClient? apiClient,
+  }) : apiClient = apiClient ?? ApiClient();
 
   @override
   State<RiwayatScreen> createState() => _RiwayatScreenState();
@@ -60,102 +31,143 @@ class RiwayatScreen extends StatefulWidget {
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
   final TextEditingController _searchController = TextEditingController();
-  int _selectedPeriodIndex = 0; // 0: Hari Ini, 1: Kemarin, 2: Pilih Tanggal
-  int _selectedStatusTabIndex = 0; // 0: Semua, 1: Sesuai, 2: Verifikasi Manual, 3: Aktif
+  Timer? _debounceTimer;
+
+  int _selectedPeriodIndex = 0; // 0: Hari Ini, 1: Kemarin, 2: Pilih Tanggal (visual)
+  int _selectedStatusTabIndex = 0; // 0: Semua, 1: Sesuai, 2: Verifikasi Manual
   int _selectedNavIndex = 2; // 2: Riwayat
 
-  // Master history sessions list
-  final List<ParkingHistoryItem> _allHistory = const [
-    ParkingHistoryItem(
-      id: '#089',
-      plateNumber: 'N 1234 ABC',
-      nim: '244107020204',
-      ownerName: 'Ahmad Faiz Fauzan',
-      statusType: RiwayatStatusType.sesuai,
-      entryTime: '07:32 WIB',
-      exitTime: '10:56 WIB',
-      duration: '3j 24m',
-      gateName: 'Pos Parkir Climbing',
-    ),
-    ParkingHistoryItem(
-      id: '#077',
-      plateNumber: 'B 3821 SDE',
-      nim: '214172019901',
-      ownerName: 'Rian Saputra',
-      statusType: RiwayatStatusType.verifikasiManual,
-      entryTime: '08:15 WIB',
-      exitTime: '11:20 WIB',
-      duration: '3j 05m',
-      note: 'Catatan: KTM fisik diperiksa petugas pos',
-      gateName: 'Pos Parkir Climbing',
-    ),
-    ParkingHistoryItem(
-      id: '#062',
-      plateNumber: 'N 8890 XY',
-      attemptedExitPlate: 'B 9988 XYZ',
-      nim: '204172018889',
-      ownerName: 'Siti Rahmawati',
-      statusType: RiwayatStatusType.ditolakAktif,
-      entryTime: '06:50 WIB',
-      exitTime: '12:10 WIB (Upaya)',
-      duration: '5j 20m',
-      note: 'Status: Check-out ditolak — sesi tetap aktif',
-      gateName: 'Pos Parkir Climbing',
-    ),
-    ParkingHistoryItem(
-      id: '#054',
-      plateNumber: 'N 8921 DEF',
-      nim: '234107020118',
-      ownerName: 'Nabila Putri Cahyani',
-      statusType: RiwayatStatusType.sesuai,
-      entryTime: '08:51 WIB',
-      exitTime: '10:00 WIB',
-      duration: '1j 09m',
-      gateName: 'Pos Gerbang Timur',
-    ),
-    ParkingHistoryItem(
-      id: '#042',
-      plateNumber: 'L 1945 POL',
-      nim: '244107020015',
-      ownerName: 'Bayu Arya Permana',
-      statusType: RiwayatStatusType.sesuai,
-      entryTime: '09:12 WIB',
-      exitTime: '11:30 WIB',
-      duration: '2j 18m',
-      gateName: 'Pos Parkir Utama',
-    ),
-  ];
+  List<HistoryItem> _historyList = [];
+  PageMeta? _pageMeta;
+  int _totalCount = 0;
+  final int _limit = 20;
+  int _offset = 0;
+
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHistory();
+  }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  List<ParkingHistoryItem> get _filteredHistory {
-    final query = _searchController.text.trim().toLowerCase();
-    return _allHistory.where((item) {
-      // Filter by status tab
-      if (_selectedStatusTabIndex == 1 && item.statusType != RiwayatStatusType.sesuai) {
-        return false;
-      }
-      if (_selectedStatusTabIndex == 2 && item.statusType != RiwayatStatusType.verifikasiManual) {
-        return false;
-      }
-      if (_selectedStatusTabIndex == 3 && item.statusType != RiwayatStatusType.ditolakAktif) {
-        return false;
-      }
-
-      if (query.isEmpty) return true;
-
-      return item.id.toLowerCase().contains(query) ||
-          item.plateNumber.toLowerCase().contains(query) ||
-          item.nim.toLowerCase().contains(query) ||
-          item.ownerName.toLowerCase().contains(query);
-    }).toList();
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      setState(() {
+        _offset = 0;
+      });
+      _fetchHistory();
+    });
   }
 
-  void _showDetailModal(ParkingHistoryItem item) {
+  Future<void> _fetchHistory() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final queryParams = <String, dynamic>{
+        'limit': _limit,
+        'offset': _offset,
+      };
+      final q = _searchController.text.trim();
+      if (q.isNotEmpty) {
+        queryParams['q'] = q;
+      }
+
+      final results = await Future.wait([
+        widget.apiClient.get('/api/sessions/history', query: queryParams),
+        widget.apiClient.get('/api/sessions/history/meta', query: queryParams),
+      ]);
+
+      final rawList = results[0];
+      final rawMeta = results[1];
+
+      List<HistoryItem> items = [];
+      if (rawList is List) {
+        items = rawList
+            .map((e) => HistoryItem.fromJson((e as Map).cast<String, dynamic>()))
+            .toList();
+      }
+
+      PageMeta? meta;
+      if (rawMeta is Map) {
+        meta = PageMeta.fromJson(rawMeta.cast<String, dynamic>());
+      }
+
+      if (mounted) {
+        setState(() {
+          _historyList = items;
+          _pageMeta = meta;
+          _totalCount = meta?.total ?? items.length;
+          _isLoading = false;
+        });
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal memuat riwayat: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _formatDuration(int minutes) {
+    if (minutes < 0) minutes = 0;
+    final hours = minutes ~/ 60;
+    final mins = minutes % 60;
+    return '${hours}j ${mins.toString().padLeft(2, '0')}m';
+  }
+
+  String _formatTime(DateTime dt) {
+    final local = dt.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$h:$m WIB';
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final d = local.day.toString().padLeft(2, '0');
+    final mo = local.month.toString().padLeft(2, '0');
+    final y = local.year;
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$d/$mo/$y $h:$m WIB';
+  }
+
+  List<HistoryItem> get _filteredHistory {
+    if (_selectedStatusTabIndex == 1) {
+      return _historyList.where((item) => item.status == 'matched').toList();
+    } else if (_selectedStatusTabIndex == 2) {
+      return _historyList.where((item) => item.status == 'manual_verified').toList();
+    }
+    return _historyList;
+  }
+
+  void _showDetailModal(HistoryItem item) {
+    final durationMinutes = item.checkedOutAt != null
+        ? item.checkedOutAt!.difference(item.checkedInAt).inMinutes
+        : DateTime.now().difference(item.checkedInAt).inMinutes;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -205,7 +217,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        'Detail Sesi ${item.id}',
+                        'Detail Sesi #${item.id}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -214,7 +226,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ),
                     ],
                   ),
-                  _buildStatusPill(item.statusType),
+                  _buildStatusPill(item.status),
                 ],
               ),
 
@@ -238,7 +250,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        item.plateNumber,
+                        item.plateIn,
                         style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 18,
@@ -260,7 +272,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           ),
                         ),
                         Text(
-                          item.duration,
+                          _formatDuration(durationMinutes),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -273,7 +285,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
               ),
 
-              if (item.attemptedExitPlate != null) ...[
+              if (item.plateOut != null && item.plateOut!.isNotEmpty && item.plateOut != item.plateIn) ...[
                 const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
@@ -288,10 +300,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     children: [
                       Row(
                         children: const [
-                          Icon(Icons.cancel_rounded, size: 16, color: Color(0xFFBE123C)),
+                          Icon(Icons.compare_arrows_rounded, size: 16, color: Color(0xFFBE123C)),
                           SizedBox(width: 6),
                           Text(
-                            'Upaya Check-Out:',
+                            'Plat Keluar:',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -307,7 +319,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          item.attemptedExitPlate!,
+                          item.plateOut!,
                           style: const TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 12,
@@ -330,53 +342,49 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
               const Divider(height: 14, color: AppColors.spBorderSoft),
               _buildDetailInfoTile(
-                icon: Icons.person_outline,
-                title: 'Nama Pemilik',
-                value: item.ownerName,
+                icon: Icons.verified_user_outlined,
+                title: 'Status Verifikasi',
+                value: item.status == 'matched'
+                    ? 'Sesuai'
+                    : (item.status == 'manual_verified' ? 'Verifikasi Manual' : item.status),
               ),
               const Divider(height: 14, color: AppColors.spBorderSoft),
               _buildDetailInfoTile(
                 icon: Icons.login_rounded,
                 title: 'Waktu Masuk',
-                value: item.entryTime,
+                value: _formatDateTime(item.checkedInAt),
               ),
               const Divider(height: 14, color: AppColors.spBorderSoft),
               _buildDetailInfoTile(
                 icon: Icons.logout_rounded,
                 title: 'Waktu Keluar',
-                value: item.exitTime,
+                value: item.checkedOutAt != null ? _formatDateTime(item.checkedOutAt!) : '-',
               ),
               const Divider(height: 14, color: AppColors.spBorderSoft),
               _buildDetailInfoTile(
                 icon: Icons.location_on_outlined,
                 title: 'Pos Gerbang',
-                value: item.gateName,
+                value: widget.parkingLot,
               ),
 
-              if (item.note != null) ...[
+              if (item.verificationNote != null && item.verificationNote!.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: item.statusType == RiwayatStatusType.verifikasiManual
-                        ? AppColors.spWarnBg
-                        : const Color(0xFFFFF1F2),
+                    color: AppColors.spWarnBg,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: item.statusType == RiwayatStatusType.verifikasiManual
-                          ? const Color(0xFFFDE68A)
-                          : const Color(0xFFFECDD3),
+                      color: const Color(0xFFFDE68A),
                     ),
                   ),
                   child: Text(
-                    item.note!,
-                    style: TextStyle(
+                    'Catatan: ${item.verificationNote}',
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: item.statusType == RiwayatStatusType.verifikasiManual
-                          ? const Color(0xFF78350F)
-                          : const Color(0xFF9F1239),
+                      color: Color(0xFF78350F),
                     ),
                   ),
                 ),
@@ -435,30 +443,30 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildStatusPill(RiwayatStatusType type) {
+  Widget _buildStatusPill(String status) {
     Color bg;
     Color textColor;
     IconData icon;
     String label;
 
-    switch (type) {
-      case RiwayatStatusType.sesuai:
+    switch (status) {
+      case 'matched':
         bg = AppColors.spSuccessBg;
         textColor = AppColors.spSuccessInk;
         icon = Icons.check_circle_rounded;
         label = 'Sesuai';
         break;
-      case RiwayatStatusType.verifikasiManual:
+      case 'manual_verified':
         bg = AppColors.spWarnBg;
         textColor = AppColors.spWarn;
         icon = Icons.warning_amber_rounded;
         label = 'Verifikasi Manual';
         break;
-      case RiwayatStatusType.ditolakAktif:
-        bg = const Color(0xFFFFF1F2);
-        textColor = const Color(0xFFBE123C);
-        icon = Icons.cancel_rounded;
-        label = 'Aktif';
+      default:
+        bg = const Color(0xFFF1F5F9);
+        textColor = AppColors.spSlate;
+        icon = Icons.info_outline_rounded;
+        label = status;
         break;
     }
 
@@ -535,10 +543,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 Expanded(
                   child: RefreshIndicator(
                     color: AppColors.spPrimary,
-                    onRefresh: () async {
-                      await Future.delayed(const Duration(milliseconds: 400));
-                      if (mounted) setState(() {});
-                    },
+                    onRefresh: _fetchHistory,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -556,6 +561,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           _buildStatusTabs(),
                           const SizedBox(height: 14),
                           _buildSessionCardsList(filtered),
+                          if (!_isLoading && _errorMessage == null && _totalCount > 0) ...[
+                            const SizedBox(height: 16),
+                            _buildPaginationBar(),
+                          ],
                         ],
                       ),
                     ),
@@ -797,7 +806,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  /// 3. Statistik Ringkasan Harian
+  /// 3. Statistik Ringkasan Harian (Sesuai Bagian 6 Master Plan: dipertahankan statis)
   Widget _buildDailySummaryStats() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -811,7 +820,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           Expanded(
             child: _buildSummaryBox(
               label: 'TOTAL',
-              value: '852',
+              value: _totalCount > 0 ? '$_totalCount' : '852',
               bg: const Color(0xFFF8FAFC),
               textColor: AppColors.spPrimary,
               labelColor: AppColors.spInk3,
@@ -949,7 +958,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  /// 5. Kolom Pencarian
+  /// 5. Kolom Pencarian (Terkoneksi ke parameter q endpoint)
   Widget _buildSearchBar() {
     return Container(
       height: 46,
@@ -960,7 +969,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: (val) => setState(() {}),
+        onChanged: _onSearchChanged,
+        onSubmitted: (_) {
+          setState(() {
+            _offset = 0;
+          });
+          _fetchHistory();
+        },
         decoration: InputDecoration(
           hintText: 'Cari NIM atau Plat Nomor...',
           hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
@@ -970,7 +985,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   icon: const Icon(Icons.clear_rounded, size: 18),
                   onPressed: () {
                     _searchController.clear();
-                    setState(() {});
+                    setState(() {
+                      _offset = 0;
+                    });
+                    _fetchHistory();
                   },
                 )
               : null,
@@ -983,7 +1001,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
   /// 6. Filter Status Tab
   Widget _buildStatusTabs() {
-    final tabs = ['Semua', 'Sesuai', 'Verifikasi Manual', 'Aktif'];
+    final tabs = ['Semua', 'Sesuai', 'Verifikasi Manual'];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1025,7 +1043,55 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   /// 7. Riwayat Sesi List
-  Widget _buildSessionCardsList(List<ParkingHistoryItem> historyList) {
+  Widget _buildSessionCardsList(List<HistoryItem> historyList) {
+    if (_isLoading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.spPrimary),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.spDangerBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 40, color: AppColors.spDanger),
+            const SizedBox(height: 10),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.spDangerInk,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _fetchHistory,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.spDanger,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (historyList.isEmpty) {
       return Container(
         width: double.infinity,
@@ -1036,18 +1102,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           border: Border.all(color: AppColors.spBorder),
         ),
         child: Column(
-          children: const [
-            Icon(Icons.search_off_rounded, size: 48, color: AppColors.spInk4),
-            SizedBox(height: 12),
-            Text(
+          children: [
+            const Icon(Icons.search_off_rounded, size: 48, color: AppColors.spInk4),
+            const SizedBox(height: 12),
+            const Text(
               'Tidak ada sesi ditemukan',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.spInk),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
-              'Coba ubah kata kunci pencarian atau tab status yang dipilih.',
+              _searchController.text.trim().isNotEmpty
+                  ? 'Tidak ada riwayat yang cocok dengan "${_searchController.text.trim()}".'
+                  : 'Belum ada data riwayat sesi parkir yang tersimpan.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppColors.spInk3),
+              style: const TextStyle(fontSize: 12, color: AppColors.spInk3),
             ),
           ],
         ),
@@ -1066,7 +1134,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildSessionCard(ParkingHistoryItem item) {
+  Widget _buildSessionCard(HistoryItem item) {
+    final durationMinutes = item.checkedOutAt != null
+        ? item.checkedOutAt!.difference(item.checkedInAt).inMinutes
+        : DateTime.now().difference(item.checkedInAt).inMinutes;
+
+    final hasDifferentPlates = item.plateOut != null &&
+        item.plateOut!.isNotEmpty &&
+        item.plateOut != item.plateIn;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1094,31 +1170,25 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    _buildStatusPill(item.statusType),
+                    _buildStatusPill(item.status),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: item.statusType == RiwayatStatusType.ditolakAktif
-                            ? const Color(0xFFFFF1F2)
-                            : item.statusType == RiwayatStatusType.verifikasiManual
-                                ? AppColors.spWarnBg
-                                : const Color(0xFFF1F5F9),
+                        color: item.status == 'manual_verified'
+                            ? AppColors.spWarnBg
+                            : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        item.statusType == RiwayatStatusType.ditolakAktif
-                            ? 'Sesi Masih Aktif'
-                            : item.statusType == RiwayatStatusType.verifikasiManual
-                                ? 'Disetujui Manual'
-                                : 'Sesi Selesai',
+                        item.status == 'manual_verified'
+                            ? 'Disetujui Manual'
+                            : 'Sesi Selesai',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: item.statusType == RiwayatStatusType.ditolakAktif
-                              ? const Color(0xFFBE123C)
-                              : item.statusType == RiwayatStatusType.verifikasiManual
-                                  ? AppColors.spWarn
-                                  : AppColors.spSlate,
+                          color: item.status == 'manual_verified'
+                              ? AppColors.spWarn
+                              : AppColors.spSlate,
                         ),
                       ),
                     ),
@@ -1127,7 +1197,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                item.id,
+                '#${item.id}',
                 style: const TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 12,
@@ -1140,8 +1210,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
           const SizedBox(height: 12),
 
-          // Plate section (Normal vs Compare if rejected)
-          if (item.statusType == RiwayatStatusType.ditolakAktif && item.attemptedExitPlate != null)
+          // Plate section (Normal vs Compare)
+          if (hasDifferentPlates)
             _buildComparePlateSection(item)
           else
             _buildStandardPlateSection(item),
@@ -1182,43 +1252,43 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
           ),
 
-          if (item.note != null) ...[
+          if (item.verificationNote != null && item.verificationNote!.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: item.statusType == RiwayatStatusType.verifikasiManual
+                color: item.status == 'manual_verified'
                     ? const Color(0xCCFFFBEB)
-                    : const Color(0xFFFFF1F2),
+                    : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: item.statusType == RiwayatStatusType.verifikasiManual
+                  color: item.status == 'manual_verified'
                       ? const Color(0xFFFDE68A)
-                      : const Color(0xFFFECDD3),
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    item.statusType == RiwayatStatusType.verifikasiManual
+                    item.status == 'manual_verified'
                         ? Icons.info_outline
-                        : Icons.cancel_outlined,
+                        : Icons.note_outlined,
                     size: 14,
-                    color: item.statusType == RiwayatStatusType.verifikasiManual
+                    color: item.status == 'manual_verified'
                         ? const Color(0xFF78350F)
-                        : const Color(0xFF9F1239),
+                        : AppColors.spSlate,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      item.note!,
+                      'Catatan: ${item.verificationNote!}',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: item.statusType == RiwayatStatusType.verifikasiManual
+                        color: item.status == 'manual_verified'
                             ? const Color(0xFF78350F)
-                            : const Color(0xFF9F1239),
+                            : AppColors.spSlate,
                       ),
                     ),
                   ),
@@ -1248,7 +1318,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        item.entryTime,
+                        _formatTime(item.checkedInAt),
                         style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 11,
@@ -1263,26 +1333,22 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      Text(
-                        item.statusType == RiwayatStatusType.ditolakAktif ? 'UPAYA KELUAR' : 'KELUAR',
+                      const Text(
+                        'KELUAR',
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
-                          color: item.statusType == RiwayatStatusType.ditolakAktif
-                              ? const Color(0xFFBE123C)
-                              : AppColors.spInk2,
+                          color: AppColors.spInk2,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        item.exitTime,
-                        style: TextStyle(
+                        item.checkedOutAt != null ? _formatTime(item.checkedOutAt!) : '-',
+                        style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: item.statusType == RiwayatStatusType.ditolakAktif
-                              ? const Color(0xFFBE123C)
-                              : AppColors.spNavy,
+                          color: AppColors.spNavy,
                         ),
                       ),
                     ],
@@ -1292,26 +1358,22 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      Text(
-                        item.statusType == RiwayatStatusType.ditolakAktif ? 'DURASI JALAN' : 'DURASI PARKIR',
+                      const Text(
+                        'DURASI PARKIR',
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
-                          color: item.statusType == RiwayatStatusType.ditolakAktif
-                              ? const Color(0xFFBE123C)
-                              : AppColors.spPrimary700,
+                          color: AppColors.spPrimary700,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        item.duration,
-                        style: TextStyle(
+                        _formatDuration(durationMinutes),
+                        style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: item.statusType == RiwayatStatusType.ditolakAktif
-                              ? const Color(0xFFBE123C)
-                              : AppColors.spPrimary700,
+                          color: AppColors.spPrimary700,
                         ),
                       ),
                     ],
@@ -1352,7 +1414,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildStandardPlateSection(ParkingHistoryItem item) {
+  Widget _buildStandardPlateSection(HistoryItem item) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -1393,7 +1455,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          item.plateNumber,
+                          item.plateIn,
                           style: const TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 13,
@@ -1410,11 +1472,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
           const SizedBox(width: 8),
           Icon(
-            item.statusType == RiwayatStatusType.verifikasiManual
+            item.status == 'manual_verified'
                 ? Icons.warning_amber_rounded
                 : Icons.check_circle_rounded,
             size: 20,
-            color: item.statusType == RiwayatStatusType.verifikasiManual
+            color: item.status == 'manual_verified'
                 ? const Color(0xFFD97706)
                 : AppColors.spSuccess,
           ),
@@ -1423,7 +1485,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildComparePlateSection(ParkingHistoryItem item) {
+  Widget _buildComparePlateSection(HistoryItem item) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -1453,7 +1515,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  item.plateNumber,
+                  item.plateIn,
                   style: const TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 11,
@@ -1470,10 +1532,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             children: [
               Row(
                 children: const [
-                  Icon(Icons.cancel_rounded, size: 14, color: Color(0xFFE11D48)),
+                  Icon(Icons.compare_arrows_rounded, size: 14, color: Color(0xFFE11D48)),
                   SizedBox(width: 4),
                   Text(
-                    'Upaya Check-Out:',
+                    'Plat Check-Out:',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFBE123C)),
                   ),
                 ],
@@ -1485,7 +1547,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  item.attemptedExitPlate ?? '-',
+                  item.plateOut ?? '-',
                   style: const TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 11,
@@ -1501,7 +1563,92 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  /// 8. Canonical Bottom Navigation
+  /// 8. Paginasi Bar (Limit/Offset terintegrasi ke backend /history dan /meta)
+  Widget _buildPaginationBar() {
+    final total = _pageMeta?.total ?? _totalCount;
+    final currentPage = (_offset ~/ _limit) + 1;
+    final totalPages = ((total + _limit - 1) ~/ _limit).clamp(1, 999999);
+    final hasPrev = _offset > 0;
+    final hasNext = _offset + _limit < total;
+
+    final startItem = _offset + 1;
+    final endItem = (_offset + _limit).clamp(1, total);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.spSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.spBorder),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '$startItem-$endItem dari $_totalCount',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.spInk3,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                onPressed: hasPrev
+                    ? () {
+                        setState(() {
+                          _offset = (_offset - _limit).clamp(0, _totalCount);
+                        });
+                        _fetchHistory();
+                      }
+                    : null,
+                icon: const Icon(Icons.chevron_left_rounded),
+                iconSize: 20,
+                color: AppColors.spPrimary,
+                disabledColor: AppColors.spBorder,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.spTint2,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$currentPage / $totalPages',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.spPrimary700,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: hasNext
+                    ? () {
+                        setState(() {
+                          _offset = _offset + _limit;
+                        });
+                        _fetchHistory();
+                      }
+                    : null,
+                icon: const Icon(Icons.chevron_right_rounded),
+                iconSize: 20,
+                color: AppColors.spPrimary,
+                disabledColor: AppColors.spBorder,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 9. Canonical Bottom Navigation
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(

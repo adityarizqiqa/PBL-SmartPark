@@ -72,14 +72,15 @@ Catatan alur check-in/check-out:
 ## 3. Konvensi bersama (WAJIB sama di semua anggota)
 
 ### 3.1 Base URL
-Dibaca dari `--dart-define`, default emulator:
+Dibaca dari `--dart-define`, default server:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000
+flutter run --dart-define=API_BASE_URL=http://4.213.226.116:9876
 ```
 
-- Emulator Android: `http://10.0.2.2:8000` (default bila define kosong).
-- HP fisik: IP LAN komputer, backend `.env` sudah `HOST=0.0.0.0`.
+- Server Backend: `http://4.213.226.116:9876` (Swagger Docs: `http://4.213.226.116:9876/docs`)
+- Emulator Android: `http://10.0.2.2:8000` (bila memakai server backend lokal di komputer).
+- HP fisik: `http://4.213.226.116:9876` atau IP LAN komputer.
 - Backend jalan dengan `python -m app` setelah `python -m app.seed --reset`.
 
 ### 3.2 Bentuk galat backend

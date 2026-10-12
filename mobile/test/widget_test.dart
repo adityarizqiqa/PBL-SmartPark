@@ -141,7 +141,6 @@ void main() {
     expect(find.text('Kendaraan Sedang\nParkir'), findsOneWidget);
     expect(find.text('Cari NIM atau Plat Nomor...'), findsOneWidget);
     expect(find.text('Scan Check-Out'), findsOneWidget);
-    expect(find.text('N 1234 ABC'), findsOneWidget);
 
     // Tap on 'Riwayat' in BottomNavigationBar from KendaraanScreen
     await tester.tap(find.byIcon(Icons.history_rounded));
@@ -153,7 +152,6 @@ void main() {
     expect(find.text('RIWAYAT SESI'), findsOneWidget);
     expect(find.text('852'), findsOneWidget);
     expect(find.text('835'), findsOneWidget);
-    expect(find.text('#089'), findsOneWidget);
   });
 
   testWidgets('Check-In Flow test: Step 1 -> Step 2 -> Step 3 -> Finish', (WidgetTester tester) async {

@@ -14,8 +14,11 @@ import 'session_store.dart';
 /// dipakai `http://10.0.2.2:8000` (alamat host dari dalam emulator Android).
 class ApiClient {
   ApiClient({http.Client? client, String? baseUrl})
-      : _client = client ?? http.Client(),
+      : _client = client ?? defaultClient ?? http.Client(),
         baseUrl = baseUrl ?? defaultBaseUrl;
+
+  /// Klien HTTP bawaan yang dapat diganti untuk keperluan pengujian.
+  static http.Client? defaultClient;
 
   static const String _emulatorBaseUrl = 'http://10.0.2.2:8000';
 
@@ -92,7 +95,7 @@ class ApiClient {
       if (photoPath != null && photoPath.isNotEmpty) {
         request.files.add(await http.MultipartFile.fromPath(photoField, photoPath));
       }
-      final streamed = await request.send();
+      final streamed = await _client.send(request);
       return http.Response.fromStream(streamed);
     });
   }

@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'constants/app_colors.dart';
 import 'screens/login_screen.dart';
 
+import 'api/api_client.dart';
+
 void main() {
   runApp(const SmartParkApp());
 }
 
 class SmartParkApp extends StatelessWidget {
-  const SmartParkApp({super.key});
+  final ApiClient? apiClient;
+
+  const SmartParkApp({super.key, this.apiClient});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +28,7 @@ class SmartParkApp extends StatelessWidget {
         ),
         fontFamily: null,
       ),
-      home: const LoginScreen(),
+      home: LoginScreen(apiClient: apiClient),
     );
   }
 }

@@ -1,0 +1,2595 @@
+{
+  "info": {
+    "name": "SmartPark API — Testing",
+    "description": "Koleksi uji untuk backend **SmartPark** (`FastAPI` + `SQLAlchemy`, repo `pbl/backend`).\n\n## Cara pakai\n\n1. Jalankan server: `uvicorn app.main:app --reload` (bawaan `{{base_url}}` = `http://127.0.0.1:8000`).\n2. Jalankan seluruh folder berurutan — variabel saling menyambung (lahan → petugas → token → sesi).\n3. Berkas contoh untuk unggahan foto: `tools/postman/sample-plate.png`. Ubah variabel `plate_photo_path` bila memakai berkas lain (Postman desktop butuh path absolut).\n\n## Autentikasi\n\nOperasi baca-tulis operasional memakai header `X-Shift-Token`, diisi otomatis oleh request **03 · Mulai bertugas (join)** lewat variabel `shift_token`. Auth tingkat koleksi disetel sebagai API Key pada header, sehingga seluruh permintaan ikut memakainya; request yang memang menguji *tanpa token* menimpanya dengan **No Auth**.\n\n## Data uji\n\nLahan uji `POS-UJI` dan petugas uji `PKUJI-01` dipakai ulang antar-run: dibuat bila belum ada, diaktifkan kembali bila run sebelumnya menonaktifkannya. Sesi parkir memakai NIM dan plat berstempel waktu supaya tidak pernah bentrok dengan data lain, dan seluruh sesi yang dibuat ditutup di akhir run. Jadi koleksi ini aman dijalankan berulang tanpa menumpuk data.\n\n## Bila run sebelumnya berhenti di tengah\n\nShift petugas uji bisa tertinggal terbuka. Tutup lewat `POST /api/shifts/{id}/close` (atau `python -m app.seed --reset` bila ingin mulai bersih), lalu jalankan ulang koleksi.",
+    "schema": "https://schema.postman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-Shift-Token",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{shift_token}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Penjaga urutan: folder 03 harus dijalankan sebelum folder 04.",
+          "if (!pm.collectionVariables.get('shift_token') && !pm.info.requestName.includes('join')) {",
+          "    console.warn('shift_token kosong — jalankan folder 03 (Mulai bertugas) lebih dulu.');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "shift_token",
+      "value": "",
+      "type": "string",
+      "description": "Diisi otomatis oleh POST /api/shifts/join."
+    },
+    {
+      "key": "officer_password",
+      "value": "uji12345",
+      "type": "string"
+    },
+    {
+      "key": "plate_photo_path",
+      "value": "./tools/postman/sample-plate.png",
+      "type": "string"
+    },
+    {
+      "key": "area_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "officer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "assignment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "shift_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id_2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id_3",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nim_probe",
+      "value": "900000001",
+      "type": "string",
+      "description": "NIM tetap untuk uji 'satu NIM satu sesi aktif' antar-run."
+    },
+    {
+      "key": "plate_probe",
+      "value": "B0PROBE",
+      "type": "string",
+      "description": "Plat tetap pasangan nim_probe."
+    },
+    {
+      "key": "session_id_probe",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "id": "f62dc750-46aa-4dea-b2b3-ba63f60e6dda",
+      "name": "00 · Sistem",
+      "item": [
+        {
+          "id": "92714c90-bc82-47a7-ae23-ff854972ed34",
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health",
+            "description": "Cek aplikasi hidup. Tidak butuh token."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan status ok\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql(\"ok\");",
+                  "});",
+                  "pm.test(\"versi ikut dilaporkan\", function () {",
+                  "    pm.expect(pm.response.json().version).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "response": []
+    },
+    {
+      "id": "2837d7ef-f97e-4216-9b20-d77203195790",
+      "name": "01 · Lahan parkir",
+      "item": [
+        {
+          "id": "74082750-a2a0-4a18-86e2-d9baaa799ea8",
+          "name": "Siapkan lahan uji",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/areas",
+            "description": "Lahan tetap `POS-UJI`. Run pertama membuatnya (201); run berikutnya sudah ada (409) — dua-duanya sah, karena tujuannya menyiapkan lahan yang sama, bukan menumpuk lahan baru.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"POS-UJI\",\n  \"name\": \"Pos Uji Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"201 saat baru, 409 saat sudah ada\", function () {",
+                  "    pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});",
+                  "pm.test(\"kode dinormalkan jadi huruf kapital\", function () {",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(pm.response.json().code).to.eql(\"POS-UJI\");",
+                  "    } else {",
+                  "        pm.expect(pm.response.json().code).to.eql(\"conflict\");",
+                  "    }",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "4a607cc1-6959-4c08-ba7c-71f512aee290",
+          "name": "Cari lahan uji (termasuk nonaktif)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/areas?include_inactive=true",
+            "description": "Lahan uji bisa sedang nonaktif sisa run sebelumnya, jadi dicari tanpa penyaring keaktifan. id-nya disimpan ke `area_id`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan berbentuk daftar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"lahan uji ketemu dan area_id tersimpan\", function () {",
+                  "    const rows = pm.response.json().filter(function (a) { return a.code === \"POS-UJI\"; });",
+                  "    pm.expect(rows).to.have.lengthOf(1);",
+                  "    pm.collectionVariables.set(\"area_id\", rows[0].id);",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "85ca6b10-9413-41d3-8eb7-63672274d8bf",
+          "name": "Aktifkan lahan uji",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/areas/{{area_id}}",
+            "description": "Mengembalikan lahan uji ke keadaan siap pakai.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan lahan aktif\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().is_active).to.be.true;",
+                  "    pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"area_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "293ae1dd-0e9a-4db8-a089-32e6621baf62",
+          "name": "Tambah lahan — kode duplikat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/areas",
+            "description": "Kode lahan harus unik.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"POS-UJI\",\n  \"name\": \"Pos Uji Postman (duplikat)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"409 conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"conflict\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "4103aa50-d70e-4a58-a976-15cbfa987c26",
+          "name": "Ubah lahan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/areas/{{area_id}}",
+            "description": "Mengubah nama lahan uji.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pos Uji Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan nama berubah\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().name).to.eql(\"Pos Uji Postman\");",
+                  "});",
+                  "pm.test(\"id tidak berubah\", function () {",
+                  "    pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"area_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "cc12e108-1698-4648-9923-f2d9aa034a60",
+          "name": "Ubah lahan tidak ada",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/areas/999999",
+            "description": "Lahan yang tidak ada menghasilkan galat domain, bukan 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tidak ada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"404 area_not_found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"area_not_found\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "16db31a1-92f4-4b3d-a9dd-f6ee0f61c38e",
+          "name": "Daftar lahan (aktif)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/areas",
+            "description": "Hanya lahan aktif yang dikembalikan secara bawaan."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan berbentuk daftar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"tiap lahan punya code, name, is_active\", function () {",
+                  "    pm.response.json().forEach(function (a) {",
+                  "        pm.expect(a).to.have.all.keys(\"id\", \"code\", \"name\", \"is_active\");",
+                  "        pm.expect(a.is_active).to.be.true;",
+                  "    });",
+                  "});",
+                  "pm.test(\"lahan uji ada di daftar aktif\", function () {",
+                  "    const ids = pm.response.json().map(function (a) { return a.id; });",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get(\"area_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "response": [],
+      "description": "Lahan uji tetap (kode `POS-UJI`) dibuat sekali lalu dipakai ulang; tidak ada lahan baru yang menumpuk tiap run."
+    },
+    {
+      "id": "fb3c3c9b-85ee-40b6-b6d0-b1ea92814d98",
+      "name": "02 · Petugas",
+      "item": [
+        {
+          "id": "0a153d89-3c01-469a-8e55-914c1572b763",
+          "name": "Siapkan petugas uji",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/officers",
+            "description": "Petugas tetap (NIP `PKUJI-01`, password `{{officer_password}}`). Run pertama membuatnya (201), run berikutnya 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_no\": \"PKUJI-01\",\n  \"name\": \"Petugas Uji Postman\",\n  \"phone\": \"081200000099\",\n  \"password\": \"{{officer_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"201 saat baru, 409 saat sudah ada\", function () {",
+                  "    pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});",
+                  "pm.test(\"hash password tidak pernah keluar dari server\", function () {",
+                  "    if (pm.response.code === 201) {",
+                  "        const body = pm.response.json();",
+                  "        pm.expect(body).to.not.have.property(\"password_hash\");",
+                  "        pm.expect(body.has_password).to.be.true;",
+                  "    } else {",
+                  "        pm.expect(pm.response.json().code).to.eql(\"conflict\");",
+                  "    }",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "69af83e3-c180-4fbd-a054-0b83724fe53f",
+          "name": "Cari petugas uji (termasuk nonaktif)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/officers?include_inactive=true",
+            "description": "Petugas uji bisa sedang nonaktif sisa run sebelumnya. id-nya disimpan ke `officer_id`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan berbentuk daftar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"petugas uji ketemu dan officer_id tersimpan\", function () {",
+                  "    const rows = pm.response.json().filter(function (o) { return o.employee_no === \"PKUJI-01\"; });",
+                  "    pm.expect(rows).to.have.lengthOf(1);",
+                  "    pm.collectionVariables.set(\"officer_id\", rows[0].id);",
+                  "});",
+                  "pm.test(\"tidak ada hash password di daftar\", function () {",
+                  "    pm.response.json().forEach(function (o) {",
+                  "        pm.expect(o).to.not.have.property(\"password_hash\");",
+                  "    });",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "068a1847-72da-45b4-a217-c0e0c51f2314",
+          "name": "Aktifkan & setel ulang password petugas uji",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/officers/{{officer_id}}",
+            "description": "Mengembalikan petugas uji ke keadaan siap pakai dan memastikan passwordnya sesuai variabel `officer_password`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_active\": true,\n  \"password\": \"{{officer_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan petugas aktif\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().is_active).to.be.true;",
+                  "    pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"officer_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "94a2bb4e-8206-4e41-a6ae-43586ac9f459",
+          "name": "Tambah petugas — NIP duplikat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/officers",
+            "description": "NIP harus unik.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_no\": \"PKUJI-01\",\n  \"name\": \"Petugas Uji Postman (duplikat)\",\n  \"password\": \"{{officer_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"409 conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"conflict\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "dd91e898-96bd-49d4-98fa-c7ca0fcd9700",
+          "name": "Tambah petugas — password terlalu pendek",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/officers",
+            "description": "Password minimal 6 karakter.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Petugas Pendek\",\n  \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"422 validation_error\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"validation_error\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "b33858cb-f79d-410b-83ef-f416f006d531",
+          "name": "Daftar petugas (aktif)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/officers",
+            "description": "Dipakai aplikasi untuk layar pilih-nama."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan berbentuk daftar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"petugas uji ikut terdaftar\", function () {",
+                  "    const ids = pm.response.json().map(function (o) { return o.id; });",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get(\"officer_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "3d445423-eaea-4be4-9cbf-6b1cdc8de0b2",
+          "name": "Detail petugas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/officers/{{officer_id}}",
+            "description": "Detail satu petugas."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan id sesuai\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"officer_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "c2625365-39c6-482f-8df3-a0669c72d648",
+          "name": "Ubah petugas",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/officers/{{officer_id}}",
+            "description": "Mengubah nomor telepon petugas uji.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"081200000098\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan telepon berubah\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().phone).to.eql(\"081200000098\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "294c526a-1d31-4485-a5e2-d6088724afee",
+          "name": "Detail petugas tidak ada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/officers/999999"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"404 officer_not_found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"officer_not_found\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "response": [],
+      "description": "Petugas uji tetap (NIP `PKUJI-01`) dibuat sekali lalu dipakai ulang."
+    },
+    {
+      "id": "3c45f816-22db-494e-b1d0-c26692322356",
+      "name": "03 · Siklus jaga",
+      "item": [
+        {
+          "id": "a5abbd35-d46b-412d-8776-c7dab90ac4de",
+          "name": "Mulai bertugas (join)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/shifts/join",
+            "description": "Menukar NIP+password jadi token penugasan. Token disimpan ke variabel `shift_token` dan dikirim sebagai header `X-Shift-Token` oleh seluruh permintaan berikutnya (auth tingkat koleksi).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officer_id\": \"{{officer_id}}\",\n  \"password\": \"{{officer_password}}\",\n  \"parking_area_id\": \"{{area_id}}\",\n  \"device_code\": \"postman\",\n  \"device_label\": \"Postman Runner\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan token diterima\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.token).to.be.a(\"string\").and.have.length.above(20);",
+                  "    pm.collectionVariables.set(\"shift_token\", body.token);",
+                  "    pm.collectionVariables.set(\"assignment_id\", body.assignment.id);",
+                  "    pm.collectionVariables.set(\"shift_id\", body.shift.id);",
+                  "});",
+                  "pm.test(\"shift di lahan uji dan masih terbuka\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.shift.parking_area_id).to.eql(Number(pm.collectionVariables.get(\"area_id\")));",
+                  "    pm.expect(body.shift.is_open).to.be.true;",
+                  "});",
+                  "pm.test(\"penugasan belum berakhir\", function () {",
+                  "    pm.expect(pm.response.json().assignment.left_at).to.be.null;",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "67c66371-08aa-4952-a812-e00cd37b5933",
+          "name": "Mulai bertugas — password salah",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/shifts/join",
+            "description": "Password salah tidak menghasilkan token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officer_id\": \"{{officer_id}}\",\n  \"password\": \"password-salah\",\n  \"parking_area_id\": \"{{area_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"401 invalid_credentials\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"invalid_credentials\");",
+                  "});",
+                  "pm.test(\"tidak ada token di respons\", function () {",
+                  "    pm.expect(pm.response.json()).to.not.have.property(\"token\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "9be7ee61-f80d-4a47-83aa-95dcd5f8f9c6",
+          "name": "Shift berjalan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/shifts/current",
+            "description": "Memakai header X-Shift-Token dari variabel koleksi."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan shift sesuai saat join\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"shift_id\")));",
+                  "});",
+                  "pm.test(\"shift masih terbuka\", function () {",
+                  "    pm.expect(pm.response.json().is_open).to.be.true;",
+                  "    pm.expect(pm.response.json().ended_at).to.be.null;",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "ec42c8c9-2133-4f1d-b332-a2e638fdb2d8",
+          "name": "Daftar shift (yang terbuka)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/shifts?open_only=true",
+            "description": "Penyaring `open_only` dan `area_id`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan berbentuk daftar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"shift uji ada di daftar\", function () {",
+                  "    const ids = pm.response.json().map(function (s) { return s.id; });",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get(\"shift_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "488fafb1-83dc-43c3-863c-499a274d7ae1",
+          "name": "Detail penugasan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/shifts/assignments/{{assignment_id}}",
+            "description": "Penugasan yang jadi penanggung jawab seluruh sesi di bawah."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan petugasnya benar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.id).to.eql(Number(pm.collectionVariables.get(\"assignment_id\")));",
+                  "    pm.expect(body.officer_id).to.eql(Number(pm.collectionVariables.get(\"officer_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "0c662201-0f8c-498a-aec2-7cbca1852d27",
+          "name": "Tanpa token — shift berjalan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/shifts/current",
+            "description": "Header X-Shift-Token dihilangkan (auth request = No Auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"401 unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"unauthorized\");",
+                  "});",
+                  "pm.test(\"menyebut header yang kurang\", function () {",
+                  "    pm.expect(pm.response.json().details.header).to.eql(\"X-Shift-Token\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "response": []
+    },
+    {
+      "id": "931b1bb2-589b-454e-972e-671da547225a",
+      "name": "04 · Sesi parkir",
+      "item": [
+        {
+          "id": "836e7dd6-4f84-444a-a1b8-4643261016f6",
+          "name": "Check-in",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "Multipart: `nim`, `plate` (mentah hasil scan), `client_request_id`, dan berkas `photo`.\n\nPlat dikirim dengan spasi dan huruf kecil untuk membuktikan normalisasi server.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "{{nim_in}}",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_scan_raw}}",
+                  "type": "text",
+                  "description": "Hasil scan mentah: huruf kecil + spasi."
+                },
+                {
+                  "key": "client_request_id",
+                  "value": "{{client_request_id}}",
+                  "type": "text",
+                  "description": "Kunci idempotensi, maksimal 36 karakter."
+                },
+                {
+                  "key": "photo",
+                  "src": "{{plate_photo_path}}",
+                  "type": "file",
+                  "description": "Berkas contoh; ganti lewat variabel `plate_photo_path`."
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"201 dan sesi aktif\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().status).to.eql(\"active\");",
+                  "});",
+                  "pm.test(\"plat dinormalkan jadi huruf kapital tanpa spasi\", function () {",
+                  "    pm.expect(pm.response.json().plate_in).to.eql(pm.variables.get(\"plate_in\"));",
+                  "});",
+                  "pm.test(\"NIM tersimpan apa adanya\", function () {",
+                  "    pm.expect(pm.response.json().nim).to.eql(pm.variables.get(\"nim_in\"));",
+                  "});",
+                  "pm.test(\"snapshot masuk tersimpan\", function () {",
+                  "    pm.expect(pm.response.json().plate_in_photo_path).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "pm.test(\"session_id tersimpan untuk alur berikutnya\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set(\"session_id\", body.id);",
+                  "    pm.expect(body.id).to.be.a(\"number\");",
+                  "});",
+                  ""
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data uji dibangkitkan SEKALI di sini (request pertama folder), lalu dipakai",
+                  "// seluruh request berikutnya lewat variabel. Kalau ditaruh di prerequest folder,",
+                  "// nilainya berubah setiap request.",
+                  "const ts = String(Date.now());",
+                  "const plate = \"B\" + ts.slice(-4) + \"XYZ\";",
+                  "",
+                  "pm.collectionVariables.set(\"nim_in\", \"24410702\" + ts.slice(-6));",
+                  "pm.collectionVariables.set(\"nim_in_2\", \"24410703\" + ts.slice(-6));",
+                  "pm.collectionVariables.set(\"plate_in\", plate);",
+                  "pm.collectionVariables.set(\"plate_other\", \"D\" + ts.slice(-4) + \"ZZZ\");",
+                  "pm.collectionVariables.set(\"plate_similar\", plate[0] + (plate[1] === \"9\" ? \"8\" : \"9\") + plate.slice(2));",
+                  "pm.collectionVariables.set(\"plate_scan_raw\", plate[0].toLowerCase() + \" \" + plate.slice(1, 5) + \" \" + plate.slice(5).toLowerCase());",
+                  "pm.collectionVariables.set(\"client_request_id\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "190c196f-a2a3-43f0-8990-5e39f2bb03d9",
+          "name": "Check-in ulang — kunci idempotensi sama",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "Retry klien dengan `client_request_id` yang sama tidak boleh membuat sesi kedua.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "{{nim_in}}",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_in}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_request_id",
+                  "value": "{{client_request_id}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "const sebelumnya = pm.collectionVariables.get(\"session_id\");",
+                  "pm.test(\"sesi yang sama dikembalikan, bukan sesi baru\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set(\"session_id\", body.id);",
+                  "    pm.expect(String(body.id)).to.eql(String(sebelumnya));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "924702bf-1de2-4f4d-8950-cd5bb1f12d51",
+          "name": "Siapkan sesi NIM uji",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "Sesi tetap untuk NIM `{{nim_probe}}` (plat `{{plate_probe}}`). Ditutup di folder 05, jadi pada run yang tuntas selalu 201; 409 hanya muncul bila run sebelumnya berhenti sebelum pembersihan.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "{{nim_probe}}",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_probe}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "pm.test(\"201 pada run yang tuntas (409 bila run sebelumnya terputus)\", function () {\n    pm.expect([201, 409]).to.include(pm.response.code);\n});\npm.test(\"sesi aktif dan platnya sesuai\", function () {\n    if (pm.response.code === 201) {\n        pm.expect(pm.response.json().status).to.eql(\"active\");\n        pm.expect(pm.response.json().plate_in).to.eql(pm.collectionVariables.get(\"plate_probe\"));\n    }\n});"
+              }
+            }
+          ]
+        },
+        {
+          "id": "48fe9cc5-c0c7-4567-b578-14649d9fcad0",
+          "name": "Sesi NIM uji terkunci ke satu plat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/lookup?plate={{plate_probe}}",
+            "description": "Pencarian plat persis untuk NIM uji; membuktikan sesi probe tetap satu-satunya yang aktif."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 plate_exact\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().match_method).to.eql(\"plate_exact\");",
+                  "});",
+                  "pm.test(\"sesi itu milik NIM uji\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.session.nim).to.eql(pm.collectionVariables.get(\"nim_probe\"));",
+                  "    pm.collectionVariables.set(\"session_id_probe\", body.session.id);",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "419f9906-5ab1-40e7-860e-d1ad9d8f6a38",
+          "name": "Check-in — NIM uji sudah punya sesi aktif",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "NIM `{{nim_probe}}` sedang aktif lewat sesi uji; plat berbeda tetap harus ditolak.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "{{nim_probe}}",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_other}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "pm.test(\"409 duplicate_active_session\", function () {\n    pm.response.to.have.status(409);\n    pm.expect(pm.response.json().code).to.eql(\"duplicate_active_session\");\n});\npm.test(\"yang bentrok adalah nim\", function () {\n    pm.expect(pm.response.json().details.field).to.eql(\"nim\");\n});"
+              }
+            }
+          ]
+        },
+        {
+          "id": "037d9723-6ea6-495d-a77d-80c10455bc44",
+          "name": "Check-in — plat uji sudah punya sesi aktif",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "Plat `{{plate_probe}}` sedang aktif lewat sesi uji; NIM yang masih bebas tetap harus ditolak.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "{{nim_in_2}}",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_probe}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "pm.test(\"409 duplicate_active_session\", function () {\n    pm.response.to.have.status(409);\n    pm.expect(pm.response.json().code).to.eql(\"duplicate_active_session\");\n});\npm.test(\"yang bentrok adalah plate\", function () {\n    pm.expect(pm.response.json().details.field).to.eql(\"plate\");\n});"
+              }
+            }
+          ]
+        },
+        {
+          "id": "3d5d6e92-aa8e-479c-a382-5158cfd093e5",
+          "name": "Check-in — NIM bukan angka",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "NIM hanya boleh berisi angka.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "ABC123",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_other}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"422 invalid_nim\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"invalid_nim\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "bb626457-7b41-433a-8bbd-4a74e43b4364",
+          "name": "Ringkasan beranda (dashboard)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/dashboard"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan bentuknya lengkap\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.all.keys(\"active_now\", \"checked_in_today\", \"checked_out_today\", \"recent\");",
+                  "});",
+                  "pm.test(\"sesi baru terhitung aktif\", function () {",
+                  "    pm.expect(pm.response.json().active_now).to.be.at.least(1);",
+                  "    pm.expect(pm.response.json().checked_in_today).to.be.at.least(1);",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "3660dc63-fa03-40b2-a740-9cb8b63359f5",
+          "name": "Kendaraan masih parkir",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/active",
+            "description": "Durasi dihitung saat dibaca, bukan disimpan."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan sesi uji ada di daftar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const rows = pm.response.json();",
+                  "    pm.expect(rows).to.be.an(\"array\");",
+                  "    const mine = rows.filter(function (r) {",
+                  "        return r.id === Number(pm.collectionVariables.get(\"session_id\"));",
+                  "    });",
+                  "    pm.expect(mine).to.have.lengthOf(1);",
+                  "});",
+                  "pm.test(\"durasi berjalan tidak negatif\", function () {",
+                  "    const mine = pm.response.json().filter(function (r) {",
+                  "        return r.id === Number(pm.collectionVariables.get(\"session_id\"));",
+                  "    })[0];",
+                  "    pm.expect(mine.duration_minutes).to.be.at.least(0);",
+                  "    pm.expect(mine.area_id).to.eql(Number(pm.collectionVariables.get(\"area_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "f9f82ff2-bcc4-48b2-ac58-8a1ed6f8829a",
+          "name": "Cari sesi — plat persis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/lookup?plate={{plate_in}}",
+            "description": "Lapisan pertama: plat persis."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 plate_exact\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().match_method).to.eql(\"plate_exact\");",
+                  "});",
+                  "pm.test(\"sesi yang dikembalikan benar\", function () {",
+                  "    pm.expect(pm.response.json().session.id).to.eql(Number(pm.collectionVariables.get(\"session_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "48e41b6c-3d0b-48ad-8c00-9f8a14ea37d6",
+          "name": "Cari sesi — plat mirip",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/lookup?plate={{plate_similar}}",
+            "description": "Lapisan kedua: OCR salah satu karakter. Server hanya mengirim kandidat, tanpa angka kemiripan."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 plate_similar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().match_method).to.eql(\"plate_similar\");",
+                  "});",
+                  "pm.test(\"sesi uji termasuk kandidat\", function () {",
+                  "    const ids = pm.response.json().candidates.map(function (c) { return c.session_id; });",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get(\"session_id\")));",
+                  "});",
+                  "pm.test(\"kandidat hanya memuat plat dan waktu\", function () {",
+                  "    pm.response.json().candidates.forEach(function (c) {",
+                  "        pm.expect(c).to.have.all.keys(\"session_id\", \"plate_in\", \"checked_in_at\", \"area_name\");",
+                  "    });",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "cd523d25-1065-4964-853a-60cacaf1f464",
+          "name": "Cari sesi — lewat NIM",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/lookup?plate=ZZ0000&nim={{nim_in}}",
+            "description": "Lapisan ketiga: plat tidak ketemu, jatuh ke NIM."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 nim_fallback\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().match_method).to.eql(\"nim_fallback\");",
+                  "    pm.expect(pm.response.json().session.id).to.eql(Number(pm.collectionVariables.get(\"session_id\")));",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "67415b4a-7c87-4e63-bb06-05e4c09b7dc6",
+          "name": "Cari sesi — tidak ketemu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/lookup?plate=ZZ9999",
+            "description": "Hasil kosong tetap 200 dengan `match_method` null dan pesan."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 tanpa kecocokan\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.match_method).to.be.null;",
+                  "    pm.expect(body.session).to.be.null;",
+                  "    pm.expect(body.candidates).to.be.empty;",
+                  "});",
+                  "pm.test(\"ada pesan untuk petugas\", function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "f3af0710-7bd3-441a-a060-025a78d30c57",
+          "name": "Detail sesi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id}}",
+            "description": "Detail beserta jejak kejadian (events)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan memuat jejak check-in\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status).to.eql(\"active\");",
+                  "    const types = body.events.map(function (e) { return e.event_type; });",
+                  "    pm.expect(types).to.include(\"check_in\");",
+                  "});",
+                  "pm.test(\"penanggung jawab tercatat\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.checked_in_by.officer_name).to.be.a(\"string\").and.not.empty;",
+                  "    pm.expect(body.checked_out_by).to.be.null;",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "873a384e-b891-4f3b-88d7-f94e296f6569",
+          "name": "Snapshot plat masuk",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id}}/photo/in",
+            "description": "Berkas hanya bisa diambil lewat endpoint terautentikasi ini."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan berupa gambar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"image/png\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "65d4591c-94c2-458d-bcfa-748e644ae4e5",
+          "name": "Snapshot plat — sisi tidak sah",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id}}/photo/samping",
+            "description": "Sisi hanya boleh `in` atau `out`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"422 validation_error\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"validation_error\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "43ede7fa-9a35-47e7-9fb8-afbb5c6ab16c",
+          "name": "Tolak check-out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/sessions/{{session_id}}/reject",
+            "description": "Penolakan hanya dicatat; sesi tetap aktif.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"KTM tidak cocok dengan motor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan sesi tetap aktif\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql(\"active\");",
+                  "    pm.expect(pm.response.json().checked_out_at).to.be.null;",
+                  "});",
+                  "pm.test(\"penolakan tercatat di jejak\", function () {",
+                  "    const types = pm.response.json().events.map(function (e) { return e.event_type; });",
+                  "    pm.expect(types).to.include(\"check_out_rejected\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "28f5e23b-937b-474b-af23-58362df739a8",
+          "name": "Tolak check-out — tanpa catatan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/sessions/{{session_id}}/reject",
+            "description": "Catatan wajib.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"422 validation_error\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"validation_error\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "266fd414-4fe3-492e-9479-d531fb53668a",
+          "name": "Check-out manual — tanpa catatan",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id}}/check-out",
+            "description": "Verifikasi manual wajib disertai catatan; permintaan ini harus ditolak tanpa menutup sesi.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "plate",
+                  "value": "{{plate_in}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "manual_verified",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"422 note_required\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"note_required\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "da183331-4223-4e3e-b348-4299a67156e4",
+          "name": "Sesi masih aktif setelah penolakan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id}}",
+            "description": "Membuktikan penolakan tidak menutup sesi."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan masih aktif\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql(\"active\");",
+                  "    pm.expect(pm.response.json().plate_out).to.be.null;",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "a124f0ae-f990-4f46-a781-5243c4ee36e1",
+          "name": "Check-out — verifikasi manual",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id}}/check-out",
+            "description": "Plat keluar berbeda satu karakter, jadi petugas memverifikasi manual dan wajib mencatat alasan.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "plate",
+                  "value": "{{plate_in}}",
+                  "type": "text",
+                  "description": "Plat hasil scan di gerbang keluar."
+                },
+                {
+                  "key": "status",
+                  "value": "manual_verified",
+                  "type": "text"
+                },
+                {
+                  "key": "note",
+                  "value": "Plat berbeda satu karakter",
+                  "type": "text"
+                },
+                {
+                  "key": "match_method",
+                  "value": "plate_similar",
+                  "type": "text"
+                },
+                {
+                  "key": "photo",
+                  "src": "{{plate_photo_path}}",
+                  "type": "file"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan sesi tertutup sebagai verifikasi manual\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status).to.eql(\"manual_verified\");",
+                  "    pm.expect(body.checked_out_at).to.be.a(\"string\");",
+                  "});",
+                  "pm.test(\"catatan dan cara pencocokan tersimpan\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.verification_note).to.eql(\"Plat berbeda satu karakter\");",
+                  "    pm.expect(body.match_method).to.eql(\"plate_similar\");",
+                  "});",
+                  "pm.test(\"jejak mencatat penutupan dan verifikasi manual\", function () {",
+                  "    const types = pm.response.json().events.map(function (e) { return e.event_type; });",
+                  "    pm.expect(types).to.include(\"check_out_closed\");",
+                  "    pm.expect(types).to.include(\"manual_verification\");",
+                  "});",
+                  "pm.test(\"snapshot keluar tersimpan\", function () {",
+                  "    pm.expect(pm.response.json().plate_out_photo_path).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "0f38ea28-82fb-4c08-9464-693a44d48834",
+          "name": "Check-out — sesi sudah tertutup",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id}}/check-out",
+            "description": "Sesi yang sudah ditutup tidak bisa ditutup dua kali.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "plate",
+                  "value": "{{plate_in}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "matched",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"409 session_not_active\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"session_not_active\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "88e81be8-cb45-4f5e-9474-fb585f09b005",
+          "name": "Check-in kedua",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "Sesi untuk menguji pembatalan check-in.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "{{nim_in_2}}",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_other}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"201 dan sesi aktif\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set(\"session_id_2\", body.id);",
+                  "    pm.expect(body.status).to.eql(\"active\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "313cc7b8-8015-4812-9508-1e77bcba5553",
+          "name": "Batalkan check-in (void)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/sessions/{{session_id_2}}/void",
+            "description": "Baris tidak dihapus, hanya ditandai `voided`; NIM dan platnya bebas lagi.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Salah input NIM, QR gagal terbaca\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan status voided\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql(\"voided\");",
+                  "});",
+                  "pm.test(\"alasan tersimpan dan tercatat\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.verification_note).to.eql(\"Salah input NIM, QR gagal terbaca\");",
+                  "    const types = body.events.map(function (e) { return e.event_type; });",
+                  "    pm.expect(types).to.include(\"check_in_voided\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "2f7f391d-4411-4cca-b78b-f661b993dd41",
+          "name": "Check-in ulang setelah void",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "NIM dan plat yang dibatalkan langsung bisa dipakai lagi.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "{{nim_in_2}}",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "{{plate_other}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"201 dan sesi baru, bukan sesi lama\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status).to.eql(\"active\");",
+                  "    pm.expect(body.id).to.not.eql(Number(pm.collectionVariables.get(\"session_id_2\")));",
+                  "    pm.collectionVariables.set(\"session_id_3\", body.id);",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "352b60c8-9810-4f2e-ace0-d59264058f42",
+          "name": "Check-out — sesuai (matched)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id_3}}/check-out",
+            "description": "Penutupan normal tanpa catatan.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "plate",
+                  "value": "{{plate_other}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "matched",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan status matched\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.status).to.eql(\"matched\");",
+                  "    pm.expect(body.plate_out).to.eql(pm.variables.get(\"plate_other\"));",
+                  "});",
+                  "pm.test(\"tanpa catatan, tanpa event verifikasi manual\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.verification_note).to.be.null;",
+                  "    const types = body.events.map(function (e) { return e.event_type; });",
+                  "    pm.expect(types).to.not.include(\"manual_verification\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "d91469b3-ee60-43ef-96bb-ce9b8d8105f0",
+          "name": "Riwayat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/history?q={{riwayat_q}}&limit=50&offset=0",
+            "description": "Riwayat hanya memuat sesi yang benar-benar ditutup."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan berbentuk daftar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"sesi verifikasi manual ada di riwayat\", function () {",
+                  "    const rows = pm.response.json().filter(function (r) {",
+                  "        return r.id === Number(pm.collectionVariables.get(\"session_id\"));",
+                  "    });",
+                  "    pm.expect(rows).to.have.lengthOf(1);",
+                  "    pm.expect(rows[0].status).to.eql(\"manual_verified\");",
+                  "});",
+                  ""
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "// Riwayat dicari lewat plat: plat unik per run, sedangkan NIM sudah punya sesi probe",
+                  "// (yang aktif, jadi tidak muncul di riwayat).",
+                  "pm.variables.set(\"riwayat_q\", pm.variables.get(\"plate_in\"));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "da839a18-b028-4589-88d2-2f76a024a93c",
+          "name": "Riwayat — jumlah total",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/history/meta?q={{riwayat_q}}&limit=50&offset=0",
+            "description": "Metadata paginasi untuk daftar riwayat."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan total minimal satu\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.all.keys(\"total\", \"limit\", \"offset\");",
+                  "    pm.expect(body.total).to.be.at.least(1);",
+                  "    pm.expect(body.limit).to.eql(50);",
+                  "});",
+                  ""
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.variables.set(\"riwayat_q\", pm.variables.get(\"plate_in\"));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "7bc0107c-a932-495f-a888-16526ab087a2",
+          "name": "Riwayat — batas limit tidak sah",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/history?limit=500",
+            "description": "`limit` dibatasi 1–200 oleh validasi query."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"422 validation_error\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"validation_error\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "5e4c8f6c-0ddd-4f62-8e34-0fe2bb7bfeb6",
+          "name": "Sesi tidak ada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/999999"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"404 session_not_found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"session_not_found\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "71cae6ea-8d8f-4cc5-8f26-706b8e48f27a",
+          "name": "Tanpa token — dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/dashboard",
+            "description": "Petugas yang tidak bertugas tidak bisa membaca data operasional.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"401 unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"unauthorized\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "5cd67cf1-8373-41a4-bbf8-24ba14ba9e85",
+          "name": "Token asal-asalan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Shift-Token",
+                "value": "token-palsu"
+              }
+            ],
+            "url": "{{base_url}}/api/sessions/dashboard",
+            "description": "Token yang tidak dikenal diperlakukan sebagai penugasan tidak aktif.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"401 assignment_not_active\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"assignment_not_active\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "response": [],
+      "description": "Seluruh permintaan di folder ini memakai header `X-Shift-Token` dari variabel koleksi (auth tingkat koleksi: API Key pada header).",
+      "event": []
+    },
+    {
+      "id": "1c707b41-499e-4033-8a73-858db75ab50b",
+      "name": "05 · Akhir shift",
+      "item": [
+        {
+          "id": "7d89b814-5597-4d95-bd19-0f4069759f7b",
+          "name": "Berhenti bertugas (leave)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/shifts/leave",
+            "description": "Token langsung mati. Karena hanya petugas uji yang bertugas di lahan uji, shiftnya ikut tertutup.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Selesai uji Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan penugasan berakhir\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().left_at).to.be.a(\"string\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "05fffb7c-3475-4bcd-934e-564b55b2decb",
+          "name": "Token mati — shift berjalan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/shifts/current",
+            "description": "Token lama tidak berlaku lagi setelah leave."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"401 assignment_not_active\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"assignment_not_active\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "50a19641-32dc-4343-bd2e-4e45415110f8",
+          "name": "Token mati — check-in",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/check-in",
+            "description": "Operasi tulis juga ikut ditolak.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nim",
+                  "value": "244107029999",
+                  "type": "text"
+                },
+                {
+                  "key": "plate",
+                  "value": "B9999ZZZ",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"401 assignment_not_active\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"assignment_not_active\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "f31d07e6-a8f6-4ba5-85d3-8208958c72a1",
+          "name": "Mulai bertugas lagi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/shifts/join",
+            "description": "Join ulang untuk memulihkan token dan mendapatkan shift baru di lahan uji.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officer_id\": \"{{officer_id}}\",\n  \"password\": \"{{officer_password}}\",\n  \"parking_area_id\": \"{{area_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan token baru berbeda\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.token).to.not.eql(pm.collectionVariables.get(\"shift_token\"));",
+                  "    pm.collectionVariables.set(\"shift_token\", body.token);",
+                  "    pm.collectionVariables.set(\"shift_id\", body.shift.id);",
+                  "    pm.collectionVariables.set(\"assignment_id\", body.assignment.id);",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "310f99f3-01a1-4ad9-9885-0db03596a8be",
+          "name": "Check-out sesi NIM uji",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/{{session_id_probe}}/check-out",
+            "description": "Merapikan sesi probe: ditutup sebagai Sesuai supaya tidak ada sesi aktif yang tertinggal.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "plate",
+                  "value": "{{plate_probe}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "matched",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan sesi probe tertutup\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql(\"matched\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "57ade80b-14fb-415e-9188-3f7ccb4998ed",
+          "name": "Tidak ada sesi aktif tertinggal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/sessions/active",
+            "description": "Semua sesi yang dibuat run ini harus sudah tertutup atau dibatalkan."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "const milikRun = [\n    pm.collectionVariables.get(\"session_id\"),\n    pm.collectionVariables.get(\"session_id_2\"),\n    pm.collectionVariables.get(\"session_id_3\"),\n    pm.collectionVariables.get(\"session_id_probe\")\n].map(String);\n\npm.test(\"200 dan berbentuk daftar\", function () {\n    pm.response.to.have.status(200);\n    pm.expect(pm.response.json()).to.be.an(\"array\");\n});\npm.test(\"tidak ada sesi run ini yang masih aktif\", function () {\n    const tertinggal = pm.response.json().filter(function (r) {\n        return milikRun.indexOf(String(r.id)) !== -1;\n    });\n    pm.expect(tertinggal).to.be.empty;\n});"
+              }
+            }
+          ]
+        },
+        {
+          "id": "925e0a8d-d2a0-47a4-9a25-82749248b66e",
+          "name": "Tutup paksa shift",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/shifts/{{shift_id}}/close",
+            "description": "Menutup shift yang lupa ditutup beserta seluruh penugasannya. Tidak butuh token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Ditutup oleh koleksi uji\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"200 dan shift tertutup\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.is_open).to.be.false;",
+                  "    pm.expect(body.ended_at).to.be.a(\"string\");",
+                  "});",
+                  "pm.test(\"seluruh penugasan ikut ditutup\", function () {",
+                  "    pm.response.json().assignments.forEach(function (a) {",
+                  "        pm.expect(a.left_at).to.be.a(\"string\");",
+                  "    });",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "c8c3dfde-afe5-4354-952f-177cae716e70",
+          "name": "Shift tertutup — token ikut mati",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/shifts/current"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "pm.test(\"401 assignment_not_active\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().code).to.eql(\"assignment_not_active\");",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "response": [],
+      "description": "Menutup siklus: berhenti bertugas, memastikan token mati, merapikan sesi uji, lalu menutup shift yang tertinggal. Lahan dan petugas uji sengaja dibiarkan aktif supaya run berikutnya bisa langsung memakainya."
+    }
+  ]
+}

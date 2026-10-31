@@ -1,0 +1,8 @@
+model: D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_wp_lr1e3_bb03_strong\ocr_model.pt
+checkpoint epoch: 125 best_val_cer: 0.46573604060913704
+manifest: D:\CollegeFile\SMT 5\SmartPark-OCR\reports\clean_manifest.csv | rows: 1044
+val greedy     CER 0.4657 | EM 1/105
+val tta_greedy CER 0.4619 | EM 2/105
+test greedy     CER 0.5236 | EM 1/108
+test tta_greedy CER 0.5136 | EM 1/108
+saved D:\CollegeFile\SMT 5\SmartPark-OCR\reports\improvement_v1\baseline\metrics.json

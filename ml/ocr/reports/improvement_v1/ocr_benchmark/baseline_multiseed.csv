@@ -1,0 +1,6 @@
+seed,tag,best_val_cer,best_epoch,val_em,train_cer_at_best,minutes,artifact
+42,bench_seed42,0.453,107,1,0.2086,8.0,D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_bench_seed42
+43,bench_seed43,0.5673,133,0,0.1897,9.6,D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_bench_seed43
+44,bench_seed44,0.6117,116,0,0.3492,8.8,D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_bench_seed44
+45,bench_seed45,0.5736,138,0,0.1574,9.9,D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_bench_seed45
+46,bench_seed46,0.5838,98,0,0.4432,7.9,D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_bench_seed46

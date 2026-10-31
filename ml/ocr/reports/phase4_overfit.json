@@ -1,0 +1,169 @@
+{
+  "n": 24,
+  "curve": [
+    {
+      "step": 1,
+      "loss": 15.3556,
+      "cer": 1.0,
+      "exact": 0,
+      "n": 24
+    },
+    {
+      "step": 50,
+      "loss": 2.8566,
+      "cer": 1.0,
+      "exact": 0,
+      "n": 24
+    },
+    {
+      "step": 100,
+      "loss": 2.3606,
+      "cer": 0.7486,
+      "exact": 0,
+      "n": 24
+    },
+    {
+      "step": 150,
+      "loss": 1.895,
+      "cer": 0.7596,
+      "exact": 0,
+      "n": 24
+    },
+    {
+      "step": 200,
+      "loss": 1.0564,
+      "cer": 0.5464,
+      "exact": 0,
+      "n": 24
+    },
+    {
+      "step": 250,
+      "loss": 0.2625,
+      "cer": 0.1803,
+      "exact": 3,
+      "n": 24
+    },
+    {
+      "step": 300,
+      "loss": 0.0914,
+      "cer": 0.1202,
+      "exact": 11,
+      "n": 24
+    },
+    {
+      "step": 350,
+      "loss": 0.037,
+      "cer": 0.0437,
+      "exact": 19,
+      "n": 24
+    },
+    {
+      "step": 400,
+      "loss": 0.0163,
+      "cer": 0.0,
+      "exact": 24,
+      "n": 24
+    }
+  ],
+  "final_cer": 0.0,
+  "final_exact": 24,
+  "final_em_pct": 100.0,
+  "samples": [
+    {
+      "gt": "B1119ZB",
+      "pred": "B1119ZB"
+    },
+    {
+      "gt": "B1358VLP",
+      "pred": "B1358VLP"
+    },
+    {
+      "gt": "AA8414PB",
+      "pred": "AA8414PB"
+    },
+    {
+      "gt": "E3996RS",
+      "pred": "E3996RS"
+    },
+    {
+      "gt": "B1682SJI",
+      "pred": "B1682SJI"
+    },
+    {
+      "gt": "AB1364AN",
+      "pred": "AB1364AN"
+    },
+    {
+      "gt": "B1310SZL",
+      "pred": "B1310SZL"
+    },
+    {
+      "gt": "E5056QD",
+      "pred": "E5056QD"
+    },
+    {
+      "gt": "E3524PAG",
+      "pred": "E3524PAG"
+    },
+    {
+      "gt": "E4212SS",
+      "pred": "E4212SS"
+    },
+    {
+      "gt": "AD418U",
+      "pred": "AD418U"
+    },
+    {
+      "gt": "B1758KRX",
+      "pred": "B1758KRX"
+    },
+    {
+      "gt": "B1378EFZ",
+      "pred": "B1378EFZ"
+    },
+    {
+      "gt": "E2247RY",
+      "pred": "E2247RY"
+    },
+    {
+      "gt": "B1813TYD",
+      "pred": "B1813TYD"
+    },
+    {
+      "gt": "B1707RFS",
+      "pred": "B1707RFS"
+    },
+    {
+      "gt": "B1941SRE",
+      "pred": "B1941SRE"
+    },
+    {
+      "gt": "AB4331SJ",
+      "pred": "AB4331SJ"
+    },
+    {
+      "gt": "B1523NYT",
+      "pred": "B1523NYT"
+    },
+    {
+      "gt": "B1873YU",
+      "pred": "B1873YU"
+    },
+    {
+      "gt": "B1566FON",
+      "pred": "B1566FON"
+    },
+    {
+      "gt": "AB1280TT",
+      "pred": "AB1280TT"
+    },
+    {
+      "gt": "B1472PQH",
+      "pred": "B1472PQH"
+    },
+    {
+      "gt": "E6375OC",
+      "pred": "E6375OC"
+    }
+  ]
+}

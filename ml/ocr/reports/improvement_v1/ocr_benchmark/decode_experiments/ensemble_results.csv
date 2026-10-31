@@ -1,0 +1,4 @@
+method,split,n,cer,exact,em_rate
+parseq_aug_seed42,val,105,0.0368,79,0.7524
+parseq_aug_seed43,val,105,0.0431,76,0.7238
+ENSEMBLE,val,105,0.0419,75,0.7143

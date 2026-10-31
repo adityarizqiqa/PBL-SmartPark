@@ -1,0 +1,58 @@
+{
+  "preprocess_shape": [
+    16,
+    1,
+    32,
+    160
+  ],
+  "preprocess_dtype": "torch.float32",
+  "preprocess_range": [
+    -1.0,
+    1.0
+  ],
+  "shape_ok": true,
+  "normalized_ok": true,
+  "vocab_size": 36,
+  "num_classes": 37,
+  "blank_idx": 0,
+  "blank_not_in_charset": true,
+  "vocab_roundtrip_ok": true,
+  "targets_exclude_blank": true,
+  "targets_in_range": true,
+  "target_lengths_match": true,
+  "cnn_output_shape": [
+    16,
+    40,
+    37
+  ],
+  "cnn_T": 40,
+  "input_lengths_per_sample": [
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40,
+    40
+  ],
+  "input_lengths_all_equal_T": true,
+  "input_lengths_ge_target": true,
+  "decode_blank_between_repeat": true,
+  "decode_repeat_collapse": true,
+  "decode_removes_blank": true,
+  "decode_empty": true,
+  "loss_finite": true,
+  "loss_value": 16.9412,
+  "grad_finite": true,
+  "grad_norm": 6.0985,
+  "argmax_blank_fraction": 0.0
+}

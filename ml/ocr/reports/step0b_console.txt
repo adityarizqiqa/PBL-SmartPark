@@ -1,0 +1,27 @@
+ep   1 | train_loss 13.5219 | trainCER 1.0000 | trainEM 0/831 (0.0%) | 2s
+ep  20 | train_loss 2.4940 | trainCER 0.7761 | trainEM 0/831 (0.0%) | 20s
+ep  40 | train_loss 2.3469 | trainCER 0.7243 | trainEM 0/831 (0.0%) | 39s
+ep  60 | train_loss 2.1349 | trainCER 0.6562 | trainEM 3/831 (0.4%) | 58s
+ep  80 | train_loss 1.8222 | trainCER 0.5969 | trainEM 26/831 (3.1%) | 77s
+ep 100 | train_loss 1.3476 | trainCER 0.3694 | trainEM 150/831 (18.1%) | 97s
+ep 120 | train_loss 0.7009 | trainCER 0.2469 | trainEM 347/831 (41.8%) | 116s
+ep 140 | train_loss 0.3745 | trainCER 0.0915 | trainEM 582/831 (70.0%) | 135s
+ep 160 | train_loss 0.3005 | trainCER 0.0837 | trainEM 525/831 (63.2%) | 154s
+ep 180 | train_loss 0.0198 | trainCER 0.0002 | trainEM 830/831 (99.9%) | 173s
+ep 200 | train_loss 0.0074 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 192s
+ep 220 | train_loss 0.0047 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 211s
+ep 240 | train_loss 0.0034 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 230s
+ep 260 | train_loss 0.0026 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 249s
+ep 280 | train_loss 0.0020 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 268s
+ep 300 | train_loss 0.0018 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 288s
+ep 320 | train_loss 0.0016 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 307s
+ep 340 | train_loss 0.0015 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 327s
+ep 360 | train_loss 0.0013 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 347s
+ep 380 | train_loss 0.0011 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 366s
+ep 400 | train_loss 0.0011 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 386s
+ep 420 | train_loss 0.0011 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 406s
+ep 440 | train_loss 0.0010 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 426s
+ep 460 | train_loss 0.0010 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 446s
+ep 480 | train_loss 0.0010 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 466s
+ep 500 | train_loss 0.0009 | trainCER 0.0000 | trainEM 831/831 (100.0%) | 486s
+done 8.1 min

@@ -1,0 +1,10 @@
+experiment,change_vs_baseline,train_rows,val_cer,val_em,test_cer,test_em,best_epoch,minutes,artifact_dir,verdict
+baseline_h32w160_historical,reference (historical best),831,0.4657,1,0.5236,1,125,2.3,artifacts/transfer_run_wp_lr1e3_bb03_strong,reference (NOT reproduced by fresh runs)
+pilot_h48w240_40ep,img 48x240 only,831,0.6396,0,,,37,3.2,artifacts/transfer_run_res_h48w240,pilot-ok
+pilot_h64w320_40ep,img 64x320 only,831,0.6599,0,,,31,4.8,artifacts/transfer_run_res_h64w320,pilot-worse
+h48w240_long_250ep,img 48x240 only,831,0.5343,0,,,221,20.6,artifacts/transfer_run_res_h48w240_long,FAIL
+baseline_repro_fresh,none (repro of default config),831,0.6193,0,,,63,5.3,artifacts/transfer_run_baseline_repro,fresh baseline sample 1
+baseline_repro2_fresh,none (repro of default config),831,0.5952,0,,,98,7.0,artifacts/transfer_run_baseline_repro2,fresh baseline sample 2
+baseline_repro3_fresh,none (repro of default config),831,0.5609,0,,,101,7.2,artifacts/transfer_run_baseline_repro3,fresh baseline sample 3 (best fresh)
+expA_gradual_unfreeze,staged backbone unfreeze (layer4@5 layer3@15 layer2@30 layer1@45 stem@60),831,0.5914,1,,,150,9.1,artifacts/transfer_run_expA_unfreeze,no improvement (within baseline spread)
+expB_weight_decay_1e3,weight_decay 1e-4 -> 1e-3 (single factor),831,0.6003,0,,,114,7.8,artifacts/transfer_run_expB_wd1e3,no improvement

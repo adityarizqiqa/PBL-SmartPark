@@ -1,0 +1,15 @@
+{
+  "val_greedy_cer": 0.4657,
+  "val_greedy_em": 1,
+  "val_tta_greedy_cer": 0.4619,
+  "val_tta_greedy_em": 2,
+  "test_greedy_cer": 0.5236,
+  "test_greedy_em": 1,
+  "test_tta_greedy_cer": 0.5136,
+  "test_tta_greedy_em": 1,
+  "num_val": 105,
+  "num_test": 108,
+  "model": "D:\\CollegeFile\\SMT 5\\SmartPark-OCR\\artifacts\\transfer_run_wp_lr1e3_bb03_strong\\ocr_model.pt",
+  "checkpoint_epoch": 125,
+  "manifest": "D:\\CollegeFile\\SMT 5\\SmartPark-OCR\\reports\\clean_manifest.csv"
+}

@@ -1,0 +1,61 @@
+{
+  "num_rows": 1044,
+  "missing_files": [],
+  "empty_labels": [],
+  "labels_with_bad_chars": [],
+  "labels_with_bad_length": [],
+  "manifest_vs_labelcsv_mismatch": [],
+  "exact_dup_groups": 0,
+  "exact_dup_cross_split_groups": [],
+  "label_leak_train_val": [],
+  "label_leak_train_test": [],
+  "label_leak_val_test": [],
+  "near_dup_cross_split_pairs": 0,
+  "near_dup_same_split_pairs": 6,
+  "split_distribution": {
+    "train": {
+      "n": 831,
+      "pattern": {
+        "datatrain": 550,
+        "rf_detection": 281
+      },
+      "len_dist": {
+        "4": 2,
+        "5": 11,
+        "6": 35,
+        "7": 352,
+        "8": 427,
+        "9": 4
+      },
+      "char_cover": 36
+    },
+    "val": {
+      "n": 105,
+      "pattern": {
+        "datatrain": 74,
+        "rf_detection": 31
+      },
+      "len_dist": {
+        "5": 1,
+        "6": 4,
+        "7": 41,
+        "8": 59
+      },
+      "char_cover": 36
+    },
+    "test": {
+      "n": 108,
+      "pattern": {
+        "datatrain": 73,
+        "rf_detection": 35
+      },
+      "len_dist": {
+        "5": 1,
+        "6": 3,
+        "7": 49,
+        "8": 55
+      },
+      "char_cover": 36
+    }
+  }
+}

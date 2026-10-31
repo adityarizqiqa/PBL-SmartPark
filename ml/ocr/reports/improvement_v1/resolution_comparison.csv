@@ -1,0 +1,4 @@
+run,img_h,img_w,val_cer,val_em,n,subs,dels,ins,datatrain_cer,datatrain_em,rf_detection_cer,rf_detection_em
+baseline_h32w160,32,160,0.4657,1,105,310,13,44,0.3876,1,0.6637,0
+h48w240_long,48,240,0.5343,0,105,361,15,45,0.531,0,0.5426,0
+h64w320_pilot40,64,320,0.6599,0,105,398,6,116,0.6389,0,0.713,0

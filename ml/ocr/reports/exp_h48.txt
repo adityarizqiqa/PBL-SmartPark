@@ -1,0 +1,16 @@
+=== 48px strong aug ===
+[strong] ep  20 | valCER 0.7970 | valEM 0/105 | 30s
+[strong] ep  40 | valCER 0.7475 | valEM 0/105 | 59s
+[strong] ep  60 | valCER 0.7411 | valEM 0/105 | 88s
+[strong] ep  80 | valCER 0.7119 | valEM 0/105 | 117s
+[strong] ep 100 | valCER 0.6840 | valEM 0/105 | 146s
+[strong] ep 120 | valCER 0.6777 | valEM 0/105 | 175s
+[strong] ep 140 | valCER 0.6688 | valEM 0/105 | 204s
+[strong] ep 160 | valCER 0.6637 | valEM 0/105 | 233s
+[strong] ep 180 | valCER 0.6561 | valEM 0/105 | 262s
+[strong] ep 200 | valCER 0.6409 | valEM 0/105 | 291s
+[strong] ep 220 | valCER 0.6371 | valEM 0/105 | 320s
+[strong] ep 240 | valCER 0.6409 | valEM 0/105 | 349s
+[strong] ep 260 | valCER 0.6294 | valEM 0/105 | 377s
+[strong] ep 280 | valCER 0.6231 | valEM 0/105 | 406s
+[strong] ep 300 | valCER 0.6256 | valEM 0/105 | 436s

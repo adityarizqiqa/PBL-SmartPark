@@ -1,0 +1,8 @@
+{
+  "n_runs": 5,
+  "mean_cer": 0.5579,
+  "std_cer": 0.0546,
+  "min_cer": 0.453,
+  "max_cer": 0.6117,
+  "mean_em": 0.2
+}

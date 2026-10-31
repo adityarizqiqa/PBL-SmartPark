@@ -1,0 +1,16 @@
+{
+  "excluded_rfv": 358,
+  "no_annotation": 0,
+  "no_bbox": 1,
+  "bad_bbox": 2,
+  "unreadable": 0,
+  "dup_old": 0,
+  "dup_new": 0,
+  "recovered": 355,
+  "split_counts": {
+    "test": 108,
+    "train": 1186,
+    "val": 105
+  },
+  "total_rows": 1399
+}

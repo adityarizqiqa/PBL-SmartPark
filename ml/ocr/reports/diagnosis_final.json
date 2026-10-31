@@ -1,0 +1,38 @@
+{
+  "diagnosis": "The model memorizes the training set perfectly but cannot generalize to unseen plates (severe overfitting), which is a data-quantity/generalization limit, NOT a pipeline bug, label noise, preprocessing bug, or BatchNorm issue.",
+  "evidence": {
+    "train_memorization": {
+      "run": "step0b_converge.py, 831 train samples, lr 2e-3, 500 epochs, no aug",
+      "result": "train CER 0.0000, train Exact Match 831/831 (100%) by epoch 200"
+    },
+    "validation_ceiling": {
+      "note": "every configuration plateaus at val CER ~0.64-0.68 with val Exact Match = 0",
+      "runs": [
+        {"config": "pad, lr 1e-3, 118ep early-stop", "val_cer": 0.654, "val_em": 0},
+        {"config": "squash, lr 1e-3, 80ep", "val_cer": 0.633, "val_em": 0},
+        {"config": "pad, lr 2e-3, best ep123", "val_cer": 0.651, "val_em": 0},
+        {"config": "mild aug, lr 1e-3, 300ep", "val_cer": 0.659, "val_em": 0},
+        {"config": "strong aug, lr 1e-3, 300ep", "val_cer": 0.643, "val_em": 0},
+        {"config": "48px input, strong aug, 200ep", "val_cer": 0.641, "val_em": 0}
+      ]
+    },
+    "batch_norm_check": {
+      "eval_mode": {"train_cer": 0.4401, "train_em": "73/831", "val_cer": 0.6548, "val_em": 0},
+      "train_mode": {"train_cer": 0.4931, "train_em": "54/831", "val_cer": 0.6675, "val_em": 0},
+      "conclusion": "BatchNorm running stats are not the cause (eval vs train mode nearly identical)"
+    },
+    "data_quality": {
+      "readable_images": "preprocessed val images are clearly human-readable with matching labels",
+      "label_review": "flagged-sample review invalid because the diagnostic model was under-trained",
+      "full_train_memorization": "confirms labels are internally consistent (model fits all 831 exactly)"
+    },
+    "per_pattern_val_cer": {"datatrain": 0.651, "rf_detection": 0.664, "conclusion": "not a train/val source-distribution mismatch"}
+  },
+  "test_result_best_so_far": {"test_cer": 0.667, "test_exact_match": 0.0, "num_test": 108},
+  "conclusion": "From-scratch CRNN + CTC on 831 clean cropped plates overfits and cannot generalize (val/test Exact Match = 0). In-scope levers (preprocessing pad/squash, input height 32/48, mild/strong augmentation, lr, epochs) do not break the ~0.65 CER ceiling.",
+  "recommended_next_steps_requiring_approval": [
+    "Transfer learning: use a pretrained (ImageNet) CNN backbone in the CRNN (architecture change) - highest probability of generalization gain",
+    "Increase training data: crop the 716 excluded full-vehicle images using a plate detector (object detector - currently out of scope)",
+    "Acquire additional labeled cropped-plate data"
+  ]
+}

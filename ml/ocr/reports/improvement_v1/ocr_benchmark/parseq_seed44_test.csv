@@ -1,0 +1,2 @@
+checkpoint,split,n,cer,exact,em_rate,n_params,latency_ms_per_img
+D:\CollegeFile\SMT 5\SmartPark-OCR\reports\improvement_v1\ocr_benchmark\parseq_runs\parseq_aug_seed44\best.pt,test,108,0.0844,64,0.5926,23832671,20.48

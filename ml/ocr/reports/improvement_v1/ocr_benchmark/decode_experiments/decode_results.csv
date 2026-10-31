@@ -1,0 +1,5 @@
+method,split,n,cer,exact,em_rate,seconds
+greedy,val,105,0.0685,64,0.6095,3.0
+beam5,val,105,0.0711,61,0.581,10.5
+tta_greedy,val,105,0.0698,64,0.6095,4.7
+tta_beam5,val,105,0.0723,60,0.5714,58.2

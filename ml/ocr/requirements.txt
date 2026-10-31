@@ -1,0 +1,15 @@
+# Core ML stack
+torch>=2.4
+torchvision>=0.19
+timm>=1.0
+
+# Image I/O and processing
+opencv-python>=4.9
+numpy>=1.26
+Pillow>=10.0
+
+# Detection (used by the integration smoke test; the OCR module itself does not require it)
+ultralytics>=8.3
+
+# Metrics / plotting helpers used in reports
+matplotlib>=3.8

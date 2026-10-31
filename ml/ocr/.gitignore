@@ -1,0 +1,49 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# ---------- Datasets (large; obtain separately) ----------
+plate_text_dataset/
+plate_detection_dataset/
+*.csv.gz
+
+# ---------- Training artifacts (checkpoints kept in checkpoints/) ----------
+artifacts/
+reports/improvement_v1/ocr_benchmark/parseq_runs/
+reports/improvement_v1/_*
+
+# ---------- Model weights (only checkpoints/ is versioned) ----------
+*.pt
+*.pth
+*.onnx
+*.engine
+*.zip
+!checkpoints/*.pt
+
+# ---------- Keep only the experimental detector out of the way ----------
+checkpoints/plate_detector_experimental.pt
+
+# ---------- OS / editors ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# ---------- Local scratch ----------
+_laporan_preview/
+_pv/
+tmp/
+scratch/
+*.log.err
+*.pid

@@ -1,0 +1,2 @@
+checkpoint,split,n,cer,exact,em_rate,n_params,latency_ms_per_img
+pretrained,val,105,1.0406,0,0.0,23832671,9.04

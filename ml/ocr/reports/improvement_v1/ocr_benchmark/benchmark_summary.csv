@@ -1,0 +1,5 @@
+model,checkpoint,params,n_runs,cer_mean,cer_std,cer_min,cer_max,em_mean,val_n,best_val_cer,best_val_em,notes
+CRNN-ResNet18(wp),baseline historical,14343141,1,0.4657,,0.4657,0.4657,1,105,0.4657,1,historical artifact; not reproducible
+CRNN-ResNet18(wp),5-seed deterministic,14343141,5,0.5579,0.0546,0.453,0.6117,0.2,105,0.453,1,seeds 42-46; cudnn.deterministic; seed42=0.453
+PARSeq-finetuned,parseq_ft_seed42,23832671,1,0.0685,,0.0685,0.0685,64,105,0.0685,64,Apache-2.0 pretrained; fine-tuned 80ep
+PARSeq-finetuned,parseq_ft_seed43,23832671,1,0.0647,,0.0647,0.0647,66,105,0.0647,66,Apache-2.0 pretrained; fine-tuned 80ep

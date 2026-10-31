@@ -1,0 +1,32 @@
+=== mild (baseline) ===
+[mild] ep  20 | valCER 0.7741 | valEM 0/105 | 19s
+[mild] ep  40 | valCER 0.7310 | valEM 0/105 | 40s
+[mild] ep  60 | valCER 0.7690 | valEM 0/105 | 60s
+[mild] ep  80 | valCER 0.6878 | valEM 0/105 | 79s
+[mild] ep 100 | valCER 0.6713 | valEM 0/105 | 98s
+[mild] ep 120 | valCER 0.6650 | valEM 0/105 | 117s
+[mild] ep 140 | valCER 0.6802 | valEM 0/105 | 136s
+[mild] ep 160 | valCER 0.6815 | valEM 0/105 | 155s
+[mild] ep 180 | valCER 0.6916 | valEM 0/105 | 174s
+[mild] ep 200 | valCER 0.6802 | valEM 0/105 | 193s
+[mild] ep 220 | valCER 0.6701 | valEM 0/105 | 212s
+[mild] ep 240 | valCER 0.6637 | valEM 0/105 | 231s
+[mild] ep 260 | valCER 0.6586 | valEM 0/105 | 251s
+[mild] ep 280 | valCER 0.6662 | valEM 0/105 | 271s
+[mild] ep 300 | valCER 0.6599 | valEM 0/105 | 293s
+=== strong aug + regularization ===
+[strong] ep  20 | valCER 0.7754 | valEM 0/105 | 22s
+[strong] ep  40 | valCER 0.7957 | valEM 0/105 | 41s
+[strong] ep  60 | valCER 0.7437 | valEM 0/105 | 61s
+[strong] ep  80 | valCER 0.7208 | valEM 0/105 | 82s
+[strong] ep 100 | valCER 0.7018 | valEM 0/105 | 102s
+[strong] ep 120 | valCER 0.7525 | valEM 0/105 | 137s
+[strong] ep 140 | valCER 0.6827 | valEM 0/105 | 158s
+[strong] ep 160 | valCER 0.6967 | valEM 0/105 | 177s
+[strong] ep 180 | valCER 0.6713 | valEM 0/105 | 196s
+[strong] ep 200 | valCER 0.6739 | valEM 0/105 | 217s
+[strong] ep 220 | valCER 0.6650 | valEM 0/105 | 237s
+[strong] ep 240 | valCER 0.6459 | valEM 0/105 | 257s
+[strong] ep 260 | valCER 0.6447 | valEM 0/105 | 277s
+[strong] ep 280 | valCER 0.6434 | valEM 0/105 | 297s
+[strong] ep 300 | valCER 0.6497 | valEM 0/105 | 316s

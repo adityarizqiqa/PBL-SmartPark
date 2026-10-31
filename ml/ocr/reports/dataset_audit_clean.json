@@ -1,0 +1,35 @@
+{
+  "total_rows": 1863,
+  "readable": 1863,
+  "unreadable": 0,
+  "empty_labels": 0,
+  "charset": "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  "chars_outside_expected": "",
+  "label_length_dist": {
+    "4": 2,
+    "5": 14,
+    "6": 55,
+    "7": 1016,
+    "8": 764,
+    "9": 12
+  },
+  "pattern_counts": {
+    "plain": 358,
+    "rf_vehicle": 358,
+    "rf_detection": 347,
+    "datatrain": 800
+  },
+  "duplicate_filenames": 0,
+  "exact_duplicate_images": 103,
+  "cropped_candidates": 1147,
+  "cropped_after_dedup": 1044,
+  "excluded_full_vehicle": 716,
+  "excluded_unreadable_or_short": 0,
+  "clean_split_counts": {
+    "test": 108,
+    "train": 831,
+    "val": 105
+  },
+  "label_leakage_train_val": 0,
+  "label_leakage_train_test": 0
+}

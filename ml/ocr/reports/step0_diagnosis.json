@@ -1,0 +1,64 @@
+{
+  "n_sweep": [
+    {
+      "cer": 0.7407,
+      "em": 0,
+      "n": 100,
+      "em_pct": 0.0,
+      "epochs": 120,
+      "aug": false,
+      "sec": 21.1
+    },
+    {
+      "cer": 0.6592,
+      "em": 0,
+      "n": 300,
+      "em_pct": 0.0,
+      "epochs": 120,
+      "aug": false,
+      "sec": 45.4
+    },
+    {
+      "cer": 0.5937,
+      "em": 4,
+      "n": 500,
+      "em_pct": 0.8,
+      "epochs": 120,
+      "aug": false,
+      "sec": 73.2
+    },
+    {
+      "cer": 0.4141,
+      "em": 46,
+      "n": 831,
+      "em_pct": 5.5,
+      "epochs": 120,
+      "aug": false,
+      "sec": 124.9
+    }
+  ],
+  "aug_ab": {
+    "no_aug": {
+      "cer": 0.4432,
+      "em": 30,
+      "n": 831,
+      "em_pct": 3.6,
+      "epochs": 120,
+      "sec": 120.6
+    },
+    "aug": {
+      "cer": 0.4009,
+      "em": 36,
+      "n": 831,
+      "em_pct": 4.3,
+      "epochs": 120,
+      "sec": 124.0
+    }
+  },
+  "label_flags": {
+    "threshold": 2,
+    "n_flagged": 778,
+    "n_total": 831,
+    "frac_flagged": 0.936
+  }
+}

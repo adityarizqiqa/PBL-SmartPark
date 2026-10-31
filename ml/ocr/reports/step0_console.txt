@@ -1,0 +1,34 @@
+train rows: 831 | device: cuda
+[0a] N= 100 no-aug 120ep | CER=0.7407 EM=0/100 (0.0%) | 21.1s
+[0a] N= 300 no-aug 120ep | CER=0.6592 EM=0/300 (0.0%) | 45.4s
+[0a] N= 500 no-aug 120ep | CER=0.5937 EM=4/500 (0.8%) | 73.2s
+[0a] N= 831 no-aug 120ep | CER=0.4141 EM=46/831 (5.5%) | 124.9s
+[0b] full=831 aug=False 120ep | CER=0.4432 EM=30/831 (3.6%) | 120.6s
+[0b] full=831 aug=True 120ep | CER=0.4009 EM=36/831 (4.3%) | 124.0s
+[0c] flagged (ed>=2): 778 / 831 (93.6%)
+     ed=7  gt=AG5836RBV  pred=AB651AB    DataTrain762.png
+     ed=7  gt=AA6290HL   pred=ABA5XE     DataTrain78.png
+     ed=6  gt=B1211RKA   pred=B1EFD      DataTrain117.png
+     ed=6  gt=B1131EKG   pred=B1TJT      DataTrain208.png
+     ed=6  gt=AD4746NW   pred=AB66XY     DataTrain237.png
+     ed=6  gt=B1311UVL   pred=B1TJQ      DataTrain264.png
+     ed=6  gt=B1135SGM   pred=B1KI       DataTrain290.png
+     ed=6  gt=AD5423AID  pred=AD65IE     DataTrain302.png
+     ed=6  gt=B1392RFW   pred=B18TJH     DataTrain306.png
+     ed=6  gt=AG5140VAA  pred=AB61A      DataTrain392.png
+     ed=6  gt=AG5253PH   pred=AB651XY    DataTrain470.png
+     ed=6  gt=B1220SOJ   pred=B1TJT      DataTrain486.png
+     ed=6  gt=AB3511OH   pred=AB230RA    DataTrain533.png
+     ed=6  gt=AA3509FN   pred=ABA0A      DataTrain536.png
+     ed=6  gt=B1112SFO   pred=B1TJK      DataTrain556.png
+     ed=6  gt=B1059RFS   pred=B1PI       DataTrain584.png
+     ed=6  gt=AA4314HV   pred=ABA1XU     DataTrain603.png
+     ed=6  gt=B1925SYG   pred=B1EFE      DataTrain665.png
+     ed=6  gt=B1532NKY   pred=B1TJT      DataTrain700.png
+     ed=6  gt=AE4996VI   pred=AB606XY    DataTrain79.png
+     ed=6  gt=E4564RRR   pred=E67SC      124-E-4564-RRR-11-21_jpg.rf.c477c362fdf17525e307058ad66fb8f4.jpg
+     ed=6  gt=E5789QD    pred=E61SL      131-E-5789-QD-12-18_jpg.rf.b95a85298056a9d7b78ff70ec201ee39.jpg
+     ed=6  gt=E4721SJ    pred=E65QO      135-E-4721-SJ-11-20_jpeg.rf.66bcf165093212d00c7a09c843393a41.jpg
+     ed=6  gt=E4958QS    pred=E66SP      137-E-4958-QS-05-20_jpg.rf.1b1a9f90cdd1b25099b6e2d8a971f706.jpg
+     ed=6  gt=E2881QAA   pred=E667A      147-E-2881-QAA-10-22_jpg.rf.7a36cae6852292a228a4506739e3bcba.jpg
+saved reports/step0_diagnosis.json, reports/label_review.csv

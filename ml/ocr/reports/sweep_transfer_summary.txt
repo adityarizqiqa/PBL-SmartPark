@@ -1,0 +1,3 @@
+l2_lr1e3_bb03_strong | valCER 0.5825 valEM 0/0 | testCER 0.6203 testEM 0/108
+l2_lr3e4_bb01_strong | valCER 0.6231 valEM 0/0 | testCER 0.6762 testEM 0/108
+wp_lr1e3_bb03_strong | valCER 0.4657 valEM 0/0 | testCER 0.5236 testEM 1/108

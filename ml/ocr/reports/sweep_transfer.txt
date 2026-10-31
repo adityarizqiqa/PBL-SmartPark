@@ -1,0 +1,224 @@
+RUN l2_lr1e3_bb03_strong
+device cuda | train 831 | val 105 | test 108 | config {'epochs': 300, 'batch': 32, 'lr': 0.001, 'backbone_lr_mult': 0.3, 'patience': 60, 'device': 'cuda', 'overfit': 0, 'backbone': 'l2', 'no_aug': False, 'strong_aug': True, 'tag': 'l2_lr1e3_bb03_strong'}
+model output shape: (4, 20, 37) | T = 20
+ep   1 | tr_loss 7.4261 | trCER 1.0000 trEM 0/831 | valCER 1.0000 valEM 0/105 | 1s
+ep   5 | tr_loss 3.3525 | trCER 1.0000 trEM 0/831 | valCER 1.0000 valEM 0/105 | 5s
+ep  10 | tr_loss 2.8075 | trCER 0.9212 trEM 0/831 | valCER 0.9112 valEM 0/105 | 10s
+ep  15 | tr_loss 2.5294 | trCER 0.7961 trEM 0/831 | valCER 0.7805 valEM 0/105 | 14s
+ep  20 | tr_loss 2.4524 | trCER 0.7641 trEM 0/831 | valCER 0.7640 valEM 0/105 | 19s
+ep  25 | tr_loss 2.3624 | trCER 0.7384 trEM 0/831 | valCER 0.7360 valEM 0/105 | 24s
+ep  30 | tr_loss 2.3120 | trCER 0.7145 trEM 0/831 | valCER 0.7208 valEM 0/105 | 28s
+ep  35 | tr_loss 2.2523 | trCER 0.7101 trEM 0/831 | valCER 0.7157 valEM 0/105 | 33s
+ep  40 | tr_loss 2.1925 | trCER 0.6773 trEM 0/831 | valCER 0.7018 valEM 0/105 | 38s
+ep  45 | tr_loss 2.1457 | trCER 0.6599 trEM 0/831 | valCER 0.6789 valEM 0/105 | 43s
+ep  50 | tr_loss 2.0763 | trCER 0.6526 trEM 4/831 | valCER 0.6650 valEM 0/105 | 48s
+ep  55 | tr_loss 2.0468 | trCER 0.6555 trEM 4/831 | valCER 0.6789 valEM 0/105 | 52s
+ep  60 | tr_loss 1.9875 | trCER 0.6159 trEM 4/831 | valCER 0.6561 valEM 0/105 | 57s
+ep  65 | tr_loss 1.8857 | trCER 0.5927 trEM 9/831 | valCER 0.6421 valEM 0/105 | 62s
+ep  70 | tr_loss 1.7831 | trCER 0.5696 trEM 6/831 | valCER 0.6371 valEM 0/105 | 66s
+ep  75 | tr_loss 1.7015 | trCER 0.5379 trEM 22/831 | valCER 0.6383 valEM 0/105 | 71s
+ep  80 | tr_loss 1.6093 | trCER 0.5111 trEM 22/831 | valCER 0.6371 valEM 0/105 | 76s
+ep  85 | tr_loss 1.5122 | trCER 0.4697 trEM 31/831 | valCER 0.6332 valEM 0/105 | 80s
+ep  90 | tr_loss 1.4083 | trCER 0.4715 trEM 46/831 | valCER 0.6332 valEM 0/105 | 85s
+ep  95 | tr_loss 1.3155 | trCER 0.4057 trEM 65/831 | valCER 0.6282 valEM 0/105 | 90s
+ep 100 | tr_loss 1.2396 | trCER 0.3450 trEM 135/831 | valCER 0.6155 valEM 0/105 | 95s
+ep 105 | tr_loss 1.1077 | trCER 0.3078 trEM 174/831 | valCER 0.6282 valEM 0/105 | 100s
+ep 110 | tr_loss 1.0037 | trCER 0.2834 trEM 237/831 | valCER 0.6358 valEM 0/105 | 104s
+ep 115 | tr_loss 0.9212 | trCER 0.2359 trEM 297/831 | valCER 0.6015 valEM 0/105 | 109s
+ep 120 | tr_loss 0.8199 | trCER 0.2270 trEM 318/831 | valCER 0.6320 valEM 0/105 | 114s
+ep 125 | tr_loss 0.7675 | trCER 0.1879 trEM 417/831 | valCER 0.6218 valEM 0/105 | 119s
+ep 130 | tr_loss 0.7103 | trCER 0.1739 trEM 446/831 | valCER 0.6231 valEM 0/105 | 124s
+ep 135 | tr_loss 0.6379 | trCER 0.1592 trEM 453/831 | valCER 0.6155 valEM 0/105 | 129s
+ep 140 | tr_loss 0.5874 | trCER 0.1388 trEM 473/831 | valCER 0.6091 valEM 0/105 | 133s
+ep 145 | tr_loss 0.4980 | trCER 0.1354 trEM 505/831 | valCER 0.6206 valEM 0/105 | 138s
+ep 150 | tr_loss 0.4530 | trCER 0.1068 trEM 545/831 | valCER 0.6066 valEM 0/105 | 143s
+ep 155 | tr_loss 0.4271 | trCER 0.0753 trEM 590/831 | valCER 0.6041 valEM 0/105 | 148s
+ep 160 | tr_loss 0.3809 | trCER 0.0653 trEM 621/831 | valCER 0.6041 valEM 0/105 | 153s
+ep 165 | tr_loss 0.3122 | trCER 0.0486 trEM 648/831 | valCER 0.5964 valEM 0/105 | 158s
+ep 170 | tr_loss 0.2781 | trCER 0.0496 trEM 638/831 | valCER 0.6003 valEM 0/105 | 163s
+ep 175 | tr_loss 0.2549 | trCER 0.0355 trEM 684/831 | valCER 0.6269 valEM 0/105 | 167s
+ep 180 | tr_loss 0.1898 | trCER 0.0249 trEM 724/831 | valCER 0.6079 valEM 0/105 | 172s
+ep 185 | tr_loss 0.1879 | trCER 0.0247 trEM 735/831 | valCER 0.6003 valEM 0/105 | 177s
+ep 190 | tr_loss 0.1787 | trCER 0.0121 trEM 774/831 | valCER 0.6104 valEM 0/105 | 182s
+ep 195 | tr_loss 0.1489 | trCER 0.0105 trEM 782/831 | valCER 0.6041 valEM 0/105 | 187s
+ep 200 | tr_loss 0.1317 | trCER 0.0113 trEM 779/831 | valCER 0.6091 valEM 0/105 | 192s
+ep 205 | tr_loss 0.1231 | trCER 0.0089 trEM 792/831 | valCER 0.6193 valEM 0/105 | 197s
+ep 210 | tr_loss 0.1046 | trCER 0.0063 trEM 803/831 | valCER 0.6193 valEM 0/105 | 202s
+early stop ep 211
+done best val CER 0.5825 EM 0 @ ep 151 | 3.4 min
+TEST CER 0.6203 | EM 0/108 (0.0%)
+   gt=A7814      pred=B1154CD
+   gt=AA1856CJ   pred=AA559CX
+   gt=B1248PC    pred=B1122SJB
+   gt=B1340UL    pred=B1493UL
+   gt=B1454EYF   pred=B1254SZF
+   gt=A7692KC    pred=A7003UC
+   gt=B111HSN    pred=B133NAU
+   gt=B1040UN    pred=B177UL
+   gt=B1781TJW   pred=B1573TJB
+   gt=B1486RFS   pred=B1280RFS
+   gt=B1827TRK   pred=B1911KQS
+   gt=B0120KXT   pred=B1944U
+   gt=B1383SS    pred=B1159EZG
+   gt=B1157SSL   pred=B1997EKC
+   gt=B1547UIW   pred=B1941TRB
+   gt=B1248PC    pred=AB1528GJ
+   gt=B1903RFD   pred=B1973RFD
+   gt=B1157YO    pred=B125TJT
+   gt=B1697SJO   pred=B1910SJQ
+   gt=B102HHB    pred=B1394WS
+l2_lr1e3_bb03_strong | valCER 0.5825 valEM 0/0 | testCER 0.6203 testEM 0/108
+RUN l2_lr3e4_bb01_strong
+device cuda | train 831 | val 105 | test 108 | config {'epochs': 400, 'batch': 32, 'lr': 0.0003, 'backbone_lr_mult': 0.1, 'patience': 80, 'device': 'cuda', 'overfit': 0, 'backbone': 'l2', 'no_aug': False, 'strong_aug': True, 'tag': 'l2_lr3e4_bb01_strong'}
+model output shape: (4, 20, 37) | T = 20
+ep   1 | tr_loss 7.5228 | trCER 0.8943 trEM 0/831 | valCER 0.8959 valEM 0/105 | 2s
+ep   5 | tr_loss 6.5090 | trCER 1.0000 trEM 0/831 | valCER 1.0000 valEM 0/105 | 6s
+ep  10 | tr_loss 3.2436 | trCER 1.0000 trEM 0/831 | valCER 1.0000 valEM 0/105 | 10s
+ep  15 | tr_loss 2.8976 | trCER 0.9216 trEM 0/831 | valCER 0.9112 valEM 0/105 | 15s
+ep  20 | tr_loss 2.7230 | trCER 0.8478 trEM 0/831 | valCER 0.8287 valEM 0/105 | 20s
+ep  25 | tr_loss 2.5599 | trCER 0.7820 trEM 0/831 | valCER 0.7652 valEM 0/105 | 25s
+ep  30 | tr_loss 2.4842 | trCER 0.7827 trEM 0/831 | valCER 0.7627 valEM 0/105 | 30s
+ep  35 | tr_loss 2.4448 | trCER 0.7956 trEM 0/831 | valCER 0.7766 valEM 0/105 | 35s
+ep  40 | tr_loss 2.4055 | trCER 0.7673 trEM 0/831 | valCER 0.7602 valEM 0/105 | 40s
+ep  45 | tr_loss 2.3729 | trCER 0.7512 trEM 0/831 | valCER 0.7411 valEM 0/105 | 45s
+ep  50 | tr_loss 2.3369 | trCER 0.7395 trEM 0/831 | valCER 0.7386 valEM 0/105 | 49s
+ep  55 | tr_loss 2.3004 | trCER 0.7337 trEM 0/831 | valCER 0.7246 valEM 0/105 | 54s
+ep  60 | tr_loss 2.2850 | trCER 0.7252 trEM 0/831 | valCER 0.7284 valEM 0/105 | 59s
+ep  65 | tr_loss 2.2628 | trCER 0.7232 trEM 0/831 | valCER 0.7246 valEM 0/105 | 64s
+ep  70 | tr_loss 2.2562 | trCER 0.7117 trEM 0/831 | valCER 0.7170 valEM 0/105 | 69s
+ep  75 | tr_loss 2.2144 | trCER 0.7132 trEM 0/831 | valCER 0.7259 valEM 0/105 | 74s
+ep  80 | tr_loss 2.1930 | trCER 0.6979 trEM 0/831 | valCER 0.7195 valEM 0/105 | 79s
+ep  85 | tr_loss 2.1649 | trCER 0.6962 trEM 0/831 | valCER 0.7132 valEM 0/105 | 84s
+ep  90 | tr_loss 2.1491 | trCER 0.6731 trEM 0/831 | valCER 0.6853 valEM 0/105 | 89s
+ep  95 | tr_loss 2.1267 | trCER 0.6848 trEM 0/831 | valCER 0.7069 valEM 0/105 | 94s
+ep 100 | tr_loss 2.1189 | trCER 0.6856 trEM 2/831 | valCER 0.7069 valEM 0/105 | 99s
+ep 105 | tr_loss 2.0990 | trCER 0.6608 trEM 3/831 | valCER 0.6865 valEM 0/105 | 104s
+ep 110 | tr_loss 2.0588 | trCER 0.6594 trEM 3/831 | valCER 0.6954 valEM 0/105 | 109s
+ep 115 | tr_loss 2.0608 | trCER 0.6566 trEM 3/831 | valCER 0.6942 valEM 0/105 | 114s
+ep 120 | tr_loss 2.0139 | trCER 0.6290 trEM 3/831 | valCER 0.6840 valEM 0/105 | 119s
+ep 125 | tr_loss 1.9979 | trCER 0.6166 trEM 7/831 | valCER 0.6688 valEM 0/105 | 124s
+ep 130 | tr_loss 1.9535 | trCER 0.5935 trEM 7/831 | valCER 0.6637 valEM 0/105 | 129s
+ep 135 | tr_loss 1.9366 | trCER 0.5917 trEM 4/831 | valCER 0.6650 valEM 0/105 | 134s
+ep 140 | tr_loss 1.8855 | trCER 0.5826 trEM 5/831 | valCER 0.6409 valEM 0/105 | 139s
+ep 145 | tr_loss 1.8557 | trCER 0.5587 trEM 6/831 | valCER 0.6612 valEM 0/105 | 144s
+ep 150 | tr_loss 1.7917 | trCER 0.5775 trEM 6/831 | valCER 0.6548 valEM 0/105 | 149s
+ep 155 | tr_loss 1.7360 | trCER 0.5549 trEM 10/831 | valCER 0.6510 valEM 0/105 | 154s
+ep 160 | tr_loss 1.7185 | trCER 0.5392 trEM 13/831 | valCER 0.6523 valEM 0/105 | 159s
+ep 165 | tr_loss 1.6873 | trCER 0.5343 trEM 20/831 | valCER 0.6637 valEM 0/105 | 164s
+ep 170 | tr_loss 1.6532 | trCER 0.5298 trEM 23/831 | valCER 0.6497 valEM 0/105 | 170s
+ep 175 | tr_loss 1.6282 | trCER 0.5112 trEM 24/831 | valCER 0.6447 valEM 0/105 | 175s
+ep 180 | tr_loss 1.5873 | trCER 0.5044 trEM 24/831 | valCER 0.6409 valEM 0/105 | 180s
+ep 185 | tr_loss 1.5519 | trCER 0.4941 trEM 27/831 | valCER 0.6599 valEM 0/105 | 188s
+ep 190 | tr_loss 1.5319 | trCER 0.4854 trEM 30/831 | valCER 0.6472 valEM 0/105 | 196s
+ep 195 | tr_loss 1.5086 | trCER 0.4715 trEM 31/831 | valCER 0.6396 valEM 0/105 | 206s
+ep 200 | tr_loss 1.4706 | trCER 0.4715 trEM 31/831 | valCER 0.6497 valEM 0/105 | 215s
+ep 205 | tr_loss 1.4435 | trCER 0.4540 trEM 38/831 | valCER 0.6497 valEM 0/105 | 224s
+ep 210 | tr_loss 1.4144 | trCER 0.4492 trEM 45/831 | valCER 0.6472 valEM 0/105 | 232s
+ep 215 | tr_loss 1.3956 | trCER 0.4333 trEM 48/831 | valCER 0.6574 valEM 0/105 | 241s
+ep 220 | tr_loss 1.3601 | trCER 0.4190 trEM 50/831 | valCER 0.6459 valEM 0/105 | 249s
+ep 225 | tr_loss 1.3263 | trCER 0.4207 trEM 62/831 | valCER 0.6447 valEM 0/105 | 258s
+ep 230 | tr_loss 1.3313 | trCER 0.4132 trEM 68/831 | valCER 0.6294 valEM 0/105 | 266s
+ep 235 | tr_loss 1.3026 | trCER 0.3963 trEM 76/831 | valCER 0.6447 valEM 0/105 | 275s
+ep 240 | tr_loss 1.2806 | trCER 0.3907 trEM 81/831 | valCER 0.6548 valEM 0/105 | 284s
+ep 245 | tr_loss 1.2429 | trCER 0.3820 trEM 81/831 | valCER 0.6447 valEM 0/105 | 292s
+ep 250 | tr_loss 1.2214 | trCER 0.3734 trEM 95/831 | valCER 0.6447 valEM 0/105 | 302s
+ep 255 | tr_loss 1.2124 | trCER 0.3642 trEM 103/831 | valCER 0.6561 valEM 0/105 | 312s
+ep 260 | tr_loss 1.1817 | trCER 0.3579 trEM 104/831 | valCER 0.6421 valEM 0/105 | 321s
+ep 265 | tr_loss 1.1858 | trCER 0.3503 trEM 123/831 | valCER 0.6485 valEM 0/105 | 329s
+ep 270 | tr_loss 1.1461 | trCER 0.3416 trEM 128/831 | valCER 0.6434 valEM 0/105 | 334s
+ep 275 | tr_loss 1.1295 | trCER 0.3333 trEM 128/831 | valCER 0.6371 valEM 0/105 | 343s
+ep 280 | tr_loss 1.1083 | trCER 0.3306 trEM 137/831 | valCER 0.6523 valEM 0/105 | 352s
+ep 285 | tr_loss 1.1112 | trCER 0.3196 trEM 146/831 | valCER 0.6421 valEM 0/105 | 361s
+ep 290 | tr_loss 1.0935 | trCER 0.3154 trEM 148/831 | valCER 0.6472 valEM 0/105 | 370s
+ep 295 | tr_loss 1.0925 | trCER 0.3089 trEM 158/831 | valCER 0.6447 valEM 0/105 | 378s
+ep 300 | tr_loss 1.0493 | trCER 0.3135 trEM 150/831 | valCER 0.6485 valEM 0/105 | 387s
+early stop ep 303
+done best val CER 0.6231 EM 0 @ ep 223 | 6.5 min
+TEST CER 0.6762 | EM 0/108 (0.0%)
+   gt=A7814      pred=B1001QA
+   gt=AA1856CJ   pred=A1112FB
+   gt=B1248PC    pred=B1443F
+   gt=B1340UL    pred=B1356VY
+   gt=B1454EYF   pred=B1444EZ
+   gt=A7692KC    pred=A8013U
+   gt=B111HSN    pred=B1113NYH
+   gt=B1040UN    pred=B1889UL
+   gt=B1781TJW   pred=B1556TP
+   gt=B1486RFS   pred=B1890EFC
+   gt=B1827TRK   pred=B1111VOS
+   gt=B0120KXT   pred=B1033UN
+   gt=B1383SS    pred=B1553EF
+   gt=B1157SSL   pred=B1113SF
+   gt=B1547UIW   pred=B1733NYK
+   gt=B1248PC    pred=AG1643RE
+   gt=B1903RFD   pred=B1323TV
+   gt=B1157YO    pred=B1113T
+   gt=B1697SJO   pred=B1666SJL
+   gt=B102HHB    pred=B1211BOP
+l2_lr3e4_bb01_strong | valCER 0.6231 valEM 0/0 | testCER 0.6762 testEM 0/108
+RUN wp_lr1e3_bb03_strong
+device cuda | train 831 | val 105 | test 108 | config {'epochs': 300, 'batch': 32, 'lr': 0.001, 'backbone_lr_mult': 0.3, 'patience': 60, 'device': 'cuda', 'overfit': 0, 'backbone': 'wp', 'no_aug': False, 'strong_aug': True, 'tag': 'wp_lr1e3_bb03_strong'}
+model output shape: (4, 40, 37) | T = 40
+ep   1 | tr_loss 14.1792 | trCER 1.0000 trEM 0/831 | valCER 1.0000 valEM 0/105 | 3s
+ep   5 | tr_loss 3.2624 | trCER 1.0000 trEM 0/831 | valCER 1.0000 valEM 0/105 | 13s
+ep  10 | tr_loss 2.6414 | trCER 0.7812 trEM 0/831 | valCER 0.7703 valEM 0/105 | 26s
+ep  15 | tr_loss 2.4672 | trCER 0.7573 trEM 0/831 | valCER 0.7589 valEM 0/105 | 40s
+ep  20 | tr_loss 2.3612 | trCER 0.7271 trEM 0/831 | valCER 0.7195 valEM 0/105 | 53s
+ep  25 | tr_loss 2.2937 | trCER 0.7135 trEM 0/831 | valCER 0.7132 valEM 0/105 | 69s
+ep  30 | tr_loss 2.2220 | trCER 0.7027 trEM 0/831 | valCER 0.6967 valEM 0/105 | 87s
+ep  35 | tr_loss 2.1204 | trCER 0.6600 trEM 0/831 | valCER 0.6853 valEM 0/105 | 100s
+ep  40 | tr_loss 2.0437 | trCER 0.6227 trEM 0/831 | valCER 0.6637 valEM 0/105 | 113s
+ep  45 | tr_loss 1.9738 | trCER 0.6077 trEM 0/831 | valCER 0.6421 valEM 0/105 | 126s
+ep  50 | tr_loss 1.8954 | trCER 0.5767 trEM 6/831 | valCER 0.6256 valEM 0/105 | 139s
+ep  55 | tr_loss 1.7947 | trCER 0.5329 trEM 10/831 | valCER 0.5787 valEM 0/105 | 153s
+ep  60 | tr_loss 1.7162 | trCER 0.5090 trEM 15/831 | valCER 0.5723 valEM 0/105 | 166s
+ep  65 | tr_loss 1.6422 | trCER 0.4752 trEM 20/831 | valCER 0.5647 valEM 0/105 | 180s
+ep  70 | tr_loss 1.5167 | trCER 0.4406 trEM 42/831 | valCER 0.5635 valEM 0/105 | 193s
+ep  75 | tr_loss 1.4587 | trCER 0.4014 trEM 57/831 | valCER 0.5228 valEM 1/105 | 206s
+ep  80 | tr_loss 1.3640 | trCER 0.3734 trEM 83/831 | valCER 0.4962 valEM 1/105 | 220s
+ep  85 | tr_loss 1.2549 | trCER 0.3516 trEM 104/831 | valCER 0.5241 valEM 1/105 | 233s
+ep  90 | tr_loss 1.1561 | trCER 0.3290 trEM 138/831 | valCER 0.5102 valEM 2/105 | 247s
+ep  95 | tr_loss 1.0979 | trCER 0.3017 trEM 165/831 | valCER 0.5038 valEM 0/105 | 260s
+ep 100 | tr_loss 1.0190 | trCER 0.2621 trEM 231/831 | valCER 0.4962 valEM 1/105 | 273s
+ep 105 | tr_loss 0.9230 | trCER 0.2425 trEM 285/831 | valCER 0.4949 valEM 1/105 | 287s
+ep 110 | tr_loss 0.8519 | trCER 0.2134 trEM 347/831 | valCER 0.4873 valEM 2/105 | 300s
+ep 115 | tr_loss 0.7634 | trCER 0.1853 trEM 389/831 | valCER 0.4721 valEM 1/105 | 314s
+ep 120 | tr_loss 0.6934 | trCER 0.1625 trEM 428/831 | valCER 0.4860 valEM 1/105 | 327s
+ep 125 | tr_loss 0.6324 | trCER 0.1456 trEM 447/831 | valCER 0.4657 valEM 1/105 | 341s
+ep 130 | tr_loss 0.5553 | trCER 0.1307 trEM 482/831 | valCER 0.4873 valEM 0/105 | 355s
+ep 135 | tr_loss 0.4628 | trCER 0.0974 trEM 538/831 | valCER 0.4670 valEM 1/105 | 369s
+ep 140 | tr_loss 0.4247 | trCER 0.0814 trEM 554/831 | valCER 0.4937 valEM 2/105 | 390s
+ep 145 | tr_loss 0.3753 | trCER 0.0674 trEM 593/831 | valCER 0.4759 valEM 2/105 | 412s
+ep 150 | tr_loss 0.2963 | trCER 0.0501 trEM 629/831 | valCER 0.4911 valEM 2/105 | 431s
+ep 155 | tr_loss 0.2780 | trCER 0.0401 trEM 667/831 | valCER 0.4759 valEM 1/105 | 447s
+ep 160 | tr_loss 0.2400 | trCER 0.0309 trEM 698/831 | valCER 0.4886 valEM 2/105 | 460s
+ep 165 | tr_loss 0.2168 | trCER 0.0228 trEM 728/831 | valCER 0.4746 valEM 0/105 | 474s
+ep 170 | tr_loss 0.1521 | trCER 0.0192 trEM 736/831 | valCER 0.4873 valEM 1/105 | 488s
+ep 175 | tr_loss 0.1303 | trCER 0.0115 trEM 775/831 | valCER 0.4822 valEM 2/105 | 501s
+ep 180 | tr_loss 0.0973 | trCER 0.0061 trEM 799/831 | valCER 0.4746 valEM 1/105 | 515s
+ep 185 | tr_loss 0.1000 | trCER 0.0039 trEM 811/831 | valCER 0.4746 valEM 2/105 | 529s
+early stop ep 185
+done best val CER 0.4657 EM 1 @ ep 125 | 8.8 min
+TEST CER 0.5236 | EM 1/108 (0.9%)
+   gt=A7814      pred=B107FUR
+   gt=AA1856CJ   pred=AA886J
+   gt=B1248PC    pred=B1722EB
+   gt=B1340UL    pred=B1563UN
+   gt=B1454EYF   pred=B1454ERF
+   gt=A7692KC    pred=AB7LL
+   gt=B111HSN    pred=B173NAD
+   gt=B1040UN    pred=B1041UO
+   gt=B1781TJW   pred=B1751JV
+   gt=B1486RFS   pred=B1486RFD
+   gt=B1827TRK   pred=B1927TMR
+   gt=B0120KXT   pred=B1287VO
+   gt=B1383SS    pred=B1393SFW
+   gt=B1157SSL   pred=B1157ER
+   gt=B1547UIW   pred=B1541TQH
+   gt=B1248PC    pred=B1124BFJ
+   gt=B1903RFD   pred=B1903RFD
+   gt=B1157YO    pred=B1157TYQ
+   gt=B1697SJO   pred=B1697EJQ
+   gt=B102HHB    pred=B102TFP
+wp_lr1e3_bb03_strong | valCER 0.4657 valEM 0/0 | testCER 0.5236 testEM 1/108
+SWEEP DONE

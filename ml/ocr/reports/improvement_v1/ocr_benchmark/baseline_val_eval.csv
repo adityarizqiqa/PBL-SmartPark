@@ -1,0 +1,4 @@
+checkpoint,n_params,img_h,img_w,latency_ms_per_img,n,exact,cer,em_rate,subs,dels,ins,datatrain_cer,datatrain_em,datatrain_n,rf_detection_cer,rf_detection_em,rf_detection_n
+D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_bench_seed42\ocr_model.pt,14352761,32,160,3.33,105,1,0.453,0.0095,315,11,31,0.3699,1,74,0.6637,0,31
+D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_bench_seed44\ocr_model.pt,14352761,32,160,0.84,105,0,0.6117,0.0,397,14,71,0.5894,0,74,0.6682,0,31
+D:\CollegeFile\SMT 5\SmartPark-OCR\artifacts\transfer_run_wp_lr1e3_bb03_strong\ocr_model.pt,14352761,32,160,0.78,105,1,0.4657,0.0095,310,13,44,0.3876,1,74,0.6637,0,31

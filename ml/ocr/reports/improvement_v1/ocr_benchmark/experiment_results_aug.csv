@@ -1,0 +1,10 @@
+experiment,change_vs_baseline,val_cer,val_em,test_cer,test_em,artifact,verdict
+PARSeq baseline fine-tune,none (reference),0.0647,66/105,,,parseq_runs/parseq_ft_seed43,reference
+PARSeq + augmentation,augmentation added,0.0292,85/105,0.0844,64/108,parseq_runs/parseq_aug_seed44,SUCCESS (best)
+PARSeq + aug seed42,seed variant,0.0368,79/105,,,parseq_runs/parseq_aug_seed42,ok
+PARSeq + aug seed43,seed variant,0.0431,76/105,,,parseq_runs/parseq_aug_seed43,ok
+PARSeq + aug seed45,seed variant (interrupted),0.0406,75/105,,,parseq_runs/parseq_aug_seed45,ok
+PARSeq + aug seed46,seed variant,0.0355,78/105,,,parseq_runs/parseq_aug_seed46,ok
+beam search (seed44 aug),decoding,0.0393,77/105,,,decode_experiments/,WORSE
+TTA (seed44 aug),decoding,0.0368,79/105,,,decode_experiments/,no change
+ensemble 3 seeds,combination,0.0355,80/105,,,decode_experiments/ensemble3_results.csv,WORSE than seed44

@@ -9,7 +9,7 @@ import '../widgets/spv_bottom_nav.dart';
 import 'kelola_lahan_screen.dart';
 import 'kelola_petugas_screen.dart';
 import 'kelola_shift_screen.dart';
-import 'login_screen.dart';
+import '../features/auth/presentation/pages/login_page.dart';
 
 /// Beranda Pengawas (SPV)
 /// Hub for the supervisor console: Kelola Lahan & Kelola Shift.
@@ -92,7 +92,7 @@ class _BerandaSpvScreenState extends State<BerandaSpvScreen> {
     SessionStore.instance.clear();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 

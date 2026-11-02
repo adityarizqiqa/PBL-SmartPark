@@ -6,7 +6,7 @@ import '../core/theme/app_colors.dart';
 import '../models/models.dart';
 import '../widgets/spv_app_bar.dart';
 import '../widgets/spv_bottom_nav.dart';
-import 'login_screen.dart';
+import '../features/auth/presentation/pages/login_page.dart';
 
 /// Kelola Lahan Parkir — Konsol Pengawas (SPV)
 /// Mapped from tmp/uiux/14-kelola-lahan.html
@@ -293,7 +293,7 @@ class _KelolaLahanScreenState extends State<KelolaLahanScreen> {
     SessionStore.instance.clear();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 

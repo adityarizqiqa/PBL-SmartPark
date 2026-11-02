@@ -23,4 +23,7 @@ abstract class AuthRepository {
 
   /// `POST /api/auth/sign-out`.
   Future<void> signOut();
+
+  /// `POST /api/shifts/leave` — mengakhiri penugasan jaga petugas.
+  Future<void> leaveShift({required String note});
 }

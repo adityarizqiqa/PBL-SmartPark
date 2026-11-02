@@ -1,4 +1,4 @@
-import 'parking_session.dart';
+import '../../../../core/entities/parking_session.dart';
 
 class Dashboard {
   final int activeNow;

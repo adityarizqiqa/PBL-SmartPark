@@ -5,11 +5,17 @@ import 'package:http/http.dart' as http;
 import 'api/session_store.dart' as legacy;
 import 'core/di/providers.dart';
 import 'core/network/api_client.dart';
+import 'core/session/officer_identity.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/domain/usecases/sign_in.dart';
 import 'features/auth/presentation/pages/login_page.dart';
-import 'screens/beranda_screen.dart';
+import 'features/auth/presentation/providers/auth_actions.dart';
+import 'features/dashboard/presentation/pages/officer_home_page.dart';
 import 'screens/beranda_spv_screen.dart';
+import 'screens/checkin_screen.dart';
+import 'screens/checkout_screen.dart';
+import 'screens/kendaraan_screen.dart';
+import 'screens/riwayat_screen.dart';
 
 void main() {
   runApp(const SmartParkApp());
@@ -32,20 +38,25 @@ class SmartParkApp extends StatelessWidget {
         title: 'SmartPark Kampus',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
-        home: Builder(
-          builder: (context) => LoginPage(
-            onSignedIn: (result) => _openHome(context, result),
-          ),
-        ),
+        home: const _EntryPoint(),
       ),
     );
   }
+}
 
-  /// Tujuan setelah masuk.
-  ///
-  /// Layar beranda masih memakai kode lama, jadi sesi juga dicerminkan ke
-  /// penyimpanan lama sampai seluruh layar pindah ke `features/`.
-  static void _openHome(BuildContext context, SignInResult result) {
+/// Halaman pertama: masuk, lalu menuju beranda sesuai peran.
+///
+/// Layar selain beranda masih memakai kode lama, jadi sesi juga dicerminkan ke
+/// penyimpanan lama sampai seluruh layar pindah ke `features/`.
+class _EntryPoint extends ConsumerWidget {
+  const _EntryPoint();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return LoginPage(onSignedIn: (result) => _openHome(context, ref, result));
+  }
+
+  void _openHome(BuildContext context, WidgetRef ref, SignInResult result) {
     final navigator = Navigator.of(context);
     switch (result) {
       case SupervisorSignedIn(:final session):
@@ -63,7 +74,7 @@ class SmartParkApp extends StatelessWidget {
             ),
           ),
         );
-      case OfficerJoinedShift(:final login, :final officer, :final area):
+      case OfficerJoinedShift(:final login, :final officer):
         legacy.SessionStore.instance
           ..shiftToken = login.token
           ..assignmentId = login.assignment.id
@@ -75,14 +86,116 @@ class SmartParkApp extends StatelessWidget {
           ..role = officer.role;
         navigator.pushReplacement(
           MaterialPageRoute(
-            builder: (_) => BerandaScreen(
-              officerName: officer.name,
-              officerRole: 'Petugas Gerbang',
-              isSupervisor: false,
-              parkingLot: '${area.code} • ${area.name}',
-            ),
+            builder: (_) => const OfficerShell(),
           ),
         );
     }
+  }
+}
+
+/// Kerangka navigasi petugas gerbang: beranda, kendaraan, riwayat.
+///
+/// Ketiga tujuan berbagi satu route agar state beranda tidak dibuang saat
+/// berpindah tab; check-in dan check-out dibuka sebagai halaman terpisah.
+class OfficerShell extends ConsumerStatefulWidget {
+  const OfficerShell({super.key});
+
+  @override
+  ConsumerState<OfficerShell> createState() => _OfficerShellState();
+}
+
+class _OfficerShellState extends ConsumerState<OfficerShell> {
+  int _index = 0;
+
+  OfficerIdentity? get _identity => ref.read(officerIdentityProvider);
+
+  Future<void> _logout() async {
+    final confirmed = await _confirmLogout();
+    if (!confirmed || !mounted) return;
+    await ref.read(leaveShiftActionProvider)('Petugas keluar');
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const _EntryPoint()),
+      (route) => false,
+    );
+  }
+
+  Future<bool> _confirmLogout() async {
+    final identity = _identity;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xFFBA1A1A), size: 24),
+            SizedBox(width: 10),
+            Expanded(child: Text('Akhiri Sesi Pos?')),
+          ],
+        ),
+        content: Text(
+          'Anda akan keluar dari sesi ${identity?.name ?? ''} '
+          'di ${identity?.areaName ?? ''}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  void _push(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final identity = ref.watch(officerIdentityProvider);
+
+    if (_index == 1) {
+      return KendaraanScreen(
+        officerName: identity?.name ?? '',
+        officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
+        isSupervisor: identity?.isSupervisor ?? false,
+        parkingLot: identity?.areaLabel ?? '',
+      );
+    }
+    if (_index == 2) {
+      return RiwayatScreen(
+        officerName: identity?.name ?? '',
+        officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
+        isSupervisor: identity?.isSupervisor ?? false,
+        parkingLot: identity?.areaLabel ?? '',
+      );
+    }
+
+    return OfficerHomePage(
+      onOpenCheckIn: () => _push(
+        CheckInScreen(
+          officerName: identity?.name ?? '',
+          officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
+          isSupervisor: identity?.isSupervisor ?? false,
+          parkingLot: identity?.areaLabel ?? '',
+        ),
+      ),
+      onOpenCheckOut: () => _push(
+        CheckOutScreen(
+          officerName: identity?.name ?? '',
+          officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
+          isSupervisor: identity?.isSupervisor ?? false,
+          parkingLot: identity?.areaLabel ?? '',
+        ),
+      ),
+      onOpenVehicles: () => setState(() => _index = 1),
+      onOpenHistory: () => setState(() => _index = 2),
+      onLogout: _logout,
+    );
   }
 }

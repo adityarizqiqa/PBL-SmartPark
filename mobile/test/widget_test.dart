@@ -6,7 +6,7 @@ import 'package:http/testing.dart';
 import 'package:mobile/api/api_client.dart';
 import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
-import 'package:mobile/screens/beranda_screen.dart';
+import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
 import 'package:mobile/screens/kendaraan_screen.dart';
 import 'package:mobile/screens/riwayat_screen.dart';
 
@@ -223,7 +223,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify that BerandaScreen is displayed
-      expect(find.byType(BerandaScreen), findsOneWidget);
+      expect(find.byType(OfficerHomePage), findsOneWidget);
       expect(find.text('Beranda Petugas'), findsOneWidget);
       expect(find.text('CHECK-IN'), findsOneWidget);
       expect(find.text('CHECK-OUT'), findsOneWidget);
@@ -234,7 +234,7 @@ void main() {
 
       // Dismiss any active floating SnackBar from login
       ScaffoldMessenger.of(
-        tester.element(find.byType(BerandaScreen)),
+        tester.element(find.byType(OfficerHomePage)),
       ).hideCurrentSnackBar();
       await tester.pumpAndSettle();
 
@@ -319,7 +319,7 @@ void main() {
     await tester.tap(find.text('Ke Beranda'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(BerandaScreen), findsOneWidget);
+    expect(find.byType(OfficerHomePage), findsOneWidget);
   });
 
   testWidgets('Check-Out Flow test: Verification -> Confirm Check-Out', (
@@ -363,6 +363,6 @@ void main() {
     await tester.tap(find.text('Selesai & Ke Beranda'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(BerandaScreen), findsOneWidget);
+    expect(find.byType(OfficerHomePage), findsOneWidget);
   });
 }

@@ -4,7 +4,6 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../core/theme/app_colors.dart';
 import '../models/models.dart';
-import 'beranda_screen.dart';
 import 'kendaraan_screen.dart';
 
 /// Screen 04 — Riwayat Sesi Parkir
@@ -604,16 +603,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               children: [
                 IconButton(
                   onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => BerandaScreen(
-                          officerName: widget.officerName,
-                          officerRole: widget.officerRole,
-                          isSupervisor: widget.isSupervisor,
-                          parkingLot: widget.parkingLot,
-                        ),
-                      ),
-                    );
+                    Navigator.of(context).popUntil((route) => route.isFirst);
                   },
                   icon: const Icon(Icons.arrow_back_rounded, size: 20),
                   color: AppColors.spInk,
@@ -1668,16 +1658,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         currentIndex: _selectedNavIndex,
         onTap: (index) {
           if (index == 0) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => BerandaScreen(
-                  officerName: widget.officerName,
-                  officerRole: widget.officerRole,
-                  isSupervisor: widget.isSupervisor,
-                  parkingLot: widget.parkingLot,
-                ),
-              ),
-            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
           } else if (index == 1) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(

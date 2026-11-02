@@ -169,8 +169,16 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
   Future<void> _logout() async {
     final confirmed = await _confirmLogout();
     if (!confirmed || !mounted) return;
-    await ref.read(leaveShiftActionProvider)('Petugas keluar');
+    final failure = await ref.read(leaveShiftActionProvider)('Petugas keluar');
     if (!mounted) return;
+    if (failure != null) {
+      // Shift belum tentu tertutup di server: tahan di sini agar petugas
+      // tidak terkunci saat masuk lagi.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengakhiri shift: ${failure.message}')),
+      );
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const _EntryPoint()),
       (route) => false,

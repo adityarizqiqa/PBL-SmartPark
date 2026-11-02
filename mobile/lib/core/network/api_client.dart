@@ -72,6 +72,14 @@ class ApiClient {
         ));
   }
 
+  /// Mengambil isi biner (mis. foto plat) dengan header otorisasi.
+  ///
+  /// Dipakai untuk menyajikan snapshot yang disimpan backend; berbeda dari
+  /// [get] yang langsung mendekode JSON.
+  Future<List<int>> getBytes(String path, {Map<String, dynamic>? query}) {
+    return _sendBytes(() => _client.get(_uri(path, query), headers: _headers(json: false)));
+  }
+
   Future<dynamic> patch(String path, {Object? body}) {
     return _send(() => _client.patch(
           _uri(path),
@@ -104,6 +112,32 @@ class ApiClient {
   }
 
   Future<dynamic> _send(Future<http.Response> Function() request) async {
+    final response = await _run(request);
+    final status = response.statusCode;
+    final raw = response.body;
+
+    if (status >= 200 && status < 300) {
+      if (raw.isEmpty) return null;
+      return jsonDecode(raw);
+    }
+
+    throw _errorFrom(status, raw);
+  }
+
+  Future<List<int>> _sendBytes(
+    Future<http.Response> Function() request,
+  ) async {
+    final response = await _run(request);
+    final status = response.statusCode;
+    if (status >= 200 && status < 300) {
+      return response.bodyBytes;
+    }
+    throw _errorFrom(status, response.body);
+  }
+
+  Future<http.Response> _run(
+    Future<http.Response> Function() request,
+  ) async {
     late http.Response response;
     try {
       response = await request().timeout(_timeout);
@@ -114,16 +148,7 @@ class ApiClient {
     } on http.ClientException catch (e) {
       throw ApiException.network(cause: e);
     }
-
-    final status = response.statusCode;
-    final raw = response.body;
-
-    if (status >= 200 && status < 300) {
-      if (raw.isEmpty) return null;
-      return jsonDecode(raw);
-    }
-
-    throw _errorFrom(status, raw);
+    return response;
   }
 
   ApiException _errorFrom(int status, String raw) {

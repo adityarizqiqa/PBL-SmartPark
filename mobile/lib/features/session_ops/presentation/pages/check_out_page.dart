@@ -1,5 +1,9 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'camera_capture_page.dart';
 
 import '../../../../core/entities/lookup_result.dart';
 import '../../../../core/entities/parking_session.dart';
@@ -63,6 +67,8 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   bool _isSubmitting = false;
   bool _showManualForm = false;
   bool _showNimSearch = false;
+  String? _outPhotoPath;
+  Uint8List? _inPhotoBytes;
 
   @override
   void initState() {
@@ -73,6 +79,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     if (widget.initialSession != null) {
       _session = widget.initialSession;
       _matchMethod = _session!.matchMethod ?? 'plate_exact';
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadInPhoto());
     } else {
       // Inisialisasi awal fallback agar layar langsung tampil siap uji/verifikasi
       _session = SessionDetail(
@@ -198,6 +205,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
           _candidates = const [];
           _lookupMessage = null;
           _nimFallbackController.text = result.session!.nim;
+          _loadInPhoto();
         } else if (result.candidates.isNotEmpty) {
           _session = null;
           _candidates = result.candidates;
@@ -239,6 +247,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
         _isSearching = false;
         _showManualForm = true;
       });
+      _loadInPhoto();
     } on Failure catch (failure) {
       if (!mounted) return;
       setState(() => _isSearching = false);
@@ -251,6 +260,36 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSearching = false);
+    }
+  }
+
+  Future<void> _captureOutPhoto() async {
+    final path = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const CameraCapturePage(title: 'Foto Plat Keluar'),
+      ),
+    );
+    if (path == null || !mounted) return;
+    setState(() {
+      _outPhotoPath = path;
+    });
+  }
+
+  /// Mengambil snapshot plat saat masuk untuk perbandingan visual.
+  ///
+  /// Gagal (404/foto belum ada) tidak menghalangi alur check-out; panel
+  /// cukup menampilkan ikon placeholder.
+  Future<void> _loadInPhoto() async {
+    final session = _session;
+    if (session == null || session.plateInPhotoPath == null) return;
+    try {
+      final bytes = await ref
+          .read(sessionRepositoryProvider)
+          .sessionPhoto(session.id, 'in');
+      if (!mounted) return;
+      setState(() => _inPhotoBytes = bytes);
+    } on Failure {
+      // Biarkan placeholder; bukan kesalahan yang menghambat check-out.
     }
   }
 
@@ -290,6 +329,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
             note: isMatched ? null : note,
             matchMethod:
                 _matchMethod ?? (isMatched ? 'plate_exact' : 'plate_similar'),
+            photoPath: _outPhotoPath,
           );
 
       if (!mounted) return;

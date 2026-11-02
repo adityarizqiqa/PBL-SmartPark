@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../../core/entities/lookup_result.dart';
 import '../../../../core/entities/parking_session.dart';
 import '../../../../core/failures/failure.dart';
@@ -49,6 +51,18 @@ class SessionRepositoryImpl implements SessionRepository {
       final raw = await _client.get(Endpoints.session(id));
       return SessionDetail.fromJson((raw as Map).cast<String, dynamic>());
     } on ApiException catch (error) {
+      throw Failure.fromApiException(error);
+    }
+  }
+
+  @override
+  Future<Uint8List?> sessionPhoto(int id, String side) async {
+    try {
+      final bytes = await _client.getBytes(Endpoints.sessionPhoto(id, side));
+      return Uint8List.fromList(bytes);
+    } on ApiException catch (error) {
+      // Foto memang belum tersedia: bukan kesalahan fatal bagi alur.
+      if (error.statusCode == 404) return null;
       throw Failure.fromApiException(error);
     }
   }

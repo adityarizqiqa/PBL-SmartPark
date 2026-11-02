@@ -131,21 +131,53 @@ extension _CheckInStepPlate on _CheckInPageState {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Photo Plate Checkin Asset with Fallback
-                Image.asset(
-                  'assets/foto-plat-checkin.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, err, stack) => Container(
+                // Live camera feed; hasil jepretan menutupi feed saat pratinjau.
+                if (_platePreviewing && _platePhotoPath != null)
+                  Image.file(
+                    File(_platePhotoPath!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => Container(
+                      color: const Color(0xFF213145),
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          size: 48,
+                          color: Colors.white24,
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_plateCamera != null && _plateCamReady)
+                  CameraPreview(_plateCamera!)
+                else if (_plateCamError != null)
+                  Container(
+                    color: const Color(0xFF213145),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      _plateCamError!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.8),
+                        height: 1.4,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
                     color: const Color(0xFF213145),
                     child: const Center(
-                      child: Icon(
-                        Icons.camera_alt_outlined,
-                        size: 48,
-                        color: Colors.white24,
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: AppColors.spScan,
+                        ),
                       ),
                     ),
                   ),
-                ),
 
                 // Gradient Overlay
                 Container(
@@ -257,12 +289,12 @@ extension _CheckInStepPlate on _CheckInPageState {
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.check, size: 14, color: AppColors.spScan),
-                                SizedBox(width: 4),
+                              children: [
+                                const Icon(Icons.check, size: 14, color: AppColors.spScan),
+                                const SizedBox(width: 4),
                                 Text(
-                                  'Plat Terdeteksi',
-                                  style: TextStyle(
+                                  _platePreviewing ? 'Pratinjau' : 'Foto Plat',
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
@@ -307,11 +339,7 @@ extension _CheckInStepPlate on _CheckInPageState {
                         ),
                       ),
                       InkWell(
-                        onTap: () {
-                          rebuild(() {
-                            _flashlightOn = !_flashlightOn;
-                          });
-                        },
+                        onTap: _togglePlateTorch,
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
                           width: 36,
@@ -357,9 +385,13 @@ extension _CheckInStepPlate on _CheckInPageState {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Text(
-                            'Kamera Smartphone Aktif',
-                            style: TextStyle(
+                          Text(
+                            _platePreviewing
+                                ? 'Pratinjau Foto Plat'
+                                : _plateCamReady
+                                    ? 'Kamera Smartphone Aktif'
+                                    : 'Menyiapkan kamera…',
+                            style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: AppColors.spInk,
@@ -518,11 +550,7 @@ extension _CheckInStepPlate on _CheckInPageState {
 
           // Ergonomic Primary Field Action Controls
           ElevatedButton.icon(
-            onPressed: () {
-              rebuild(() {
-                _currentStep = 3; // Move to Step 3: Konfirmasi
-              });
-            },
+            onPressed: () => _setStep(3), // Move to Step 3: Konfirmasi
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spPrimary,
               foregroundColor: Colors.white,
@@ -540,14 +568,9 @@ extension _CheckInStepPlate on _CheckInPageState {
           const SizedBox(height: 10),
 
           ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Memindai ulang plat kendaraan...'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
+            onPressed: _plateCapturing
+                ? null
+                : (_platePreviewing ? _retakePlate : _capturePlateInline),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spTint3,
               foregroundColor: AppColors.spInk,
@@ -555,10 +578,23 @@ extension _CheckInStepPlate on _CheckInPageState {
               minimumSize: const Size.fromHeight(50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text(
-              'Scan Ulang',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            icon: _plateCapturing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    _platePreviewing ? Icons.refresh_rounded : Icons.photo_camera_outlined,
+                    size: 18,
+                  ),
+            label: Text(
+              _plateCapturing
+                  ? 'Mengambil foto…'
+                  : _platePreviewing
+                      ? 'Ambil Ulang Foto'
+                      : 'Ambil Foto Plat',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
 
@@ -572,7 +608,7 @@ extension _CheckInStepPlate on _CheckInPageState {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Sistem OCR mendeteksi plat nomor langsung dari kamera smartphone. Tekan Koreksi Manual bila plat kotor atau tidak terbaca sempurna.',
+                  'Foto plat diambil langsung dari kamera. Tekan Koreksi Manual bila hasil foto kurang jelas atau plat perlu diubah.',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.spInk2,

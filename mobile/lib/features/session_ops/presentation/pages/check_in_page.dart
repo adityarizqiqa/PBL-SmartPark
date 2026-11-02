@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,6 +68,12 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   late final MobileScannerController _qrController;
   DateTime? _lastQrAt;
   String _lastQrCode = '';
+  // Live plate camera embedded in Step 2 viewfinder.
+  CameraController? _plateCamera;
+  bool _plateCamReady = false;
+  String? _plateCamError;
+  bool _plateCapturing = false;
+  bool _platePreviewing = false;
 
   // Laser animation for camera viewfinder
   late AnimationController _animController;
@@ -89,12 +99,14 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     _laserAnimation = Tween<double>(begin: 0.15, end: 0.85).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
+    if (_currentStep == 2) unawaited(_ensurePlateCamera());
   }
 
   @override
   void dispose() {
     _animController.dispose();
     _qrController.dispose();
+    _plateCamera?.dispose();
     _nimController.dispose();
     _plateController.dispose();
     _voidReasonController.dispose();
@@ -306,9 +318,106 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     );
   }
 
-  /// Pindah step check-in (cabang ini belum mengelola kamera plat).
+  /// Pindah step + serah-terima kamera: hanya satu kamera aktif.
+  /// Step 2 = kamera plat; step 1 = scanner QR; selain itu keduanya berhenti.
   void _setStep(int s) {
     setState(() => _currentStep = s);
+    _applyCameraForStep(s);
+  }
+
+  void _applyCameraForStep(int s) {
+    try {
+      if (s == 2) {
+        unawaited(_qrController.stop().catchError((_) {}));
+        unawaited(_ensurePlateCamera());
+      } else {
+        unawaited(_plateCamera?.pausePreview().catchError((_) {}) ?? Future.value());
+        if (s == 1) unawaited(_qrController.start().catchError((_) {}));
+      }
+    } catch (_) {
+      // Perangkat tanpa kamera / plugin belum siap (widget test): abaikan.
+    }
+  }
+
+  /// Inisialisasi kamera plat sekali saja; dipanggil saat masuk Step 2.
+  Future<void> _ensurePlateCamera() async {
+    try {
+      if (_plateCamera != null) {
+        await _plateCamera!.resumePreview();
+        return;
+      }
+      final cameras = await availableCameras();
+      if (!mounted) return;
+      if (cameras.isEmpty) {
+        setState(() => _plateCamError = 'Tidak ada kamera di perangkat ini.');
+        return;
+      }
+      final back = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+      final controller = CameraController(
+        back,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await controller.initialize();
+      if (!mounted) return;
+      setState(() {
+        _plateCamera = controller;
+        _plateCamReady = true;
+        _plateCamError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _plateCamReady = false;
+        _plateCamError = 'Kamera tidak tersedia. Ketik plat secara manual.';
+      });
+    }
+  }
+
+  /// Shutter inline: jepret dari preview live, tampilkan pratinjau hasil.
+  Future<void> _capturePlateInline() async {
+    final camera = _plateCamera;
+    if (camera == null || !_plateCamReady || _plateCapturing) return;
+    setState(() => _plateCapturing = true);
+    try {
+      final file = await camera.takePicture();
+      await camera.pausePreview();
+      if (!mounted) return;
+      setState(() {
+        _platePhotoPath = file.path;
+        _platePreviewing = true;
+        _plateCapturing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _plateCapturing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal mengambil foto. Coba lagi.')),
+      );
+    }
+  }
+
+  /// Kembali ke preview live untuk foto ulang.
+  void _retakePlate() {
+    setState(() => _platePreviewing = false);
+    try {
+      unawaited(_plateCamera?.resumePreview().catchError((_) {}) ?? Future.value());
+    } catch (_) {}
+  }
+
+  Future<void> _togglePlateTorch() async {
+    final camera = _plateCamera;
+    if (camera == null || !_plateCamReady) return;
+    try {
+      await camera.setFlashMode(_flashlightOn ? FlashMode.off : FlashMode.torch);
+    } catch (_) {
+      return; // Perangkat tanpa flash: abaikan.
+    }
+    if (!mounted) return;
+    setState(() => _flashlightOn = !_flashlightOn);
   }
 
   /// Callback live scanner inline: isi NIM otomatis saat QR terbaca.

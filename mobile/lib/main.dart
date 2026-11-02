@@ -17,8 +17,8 @@ import 'features/history/presentation/pages/history_page_view.dart';
 import 'features/vehicles/domain/entities/active_vehicle.dart';
 import 'features/vehicles/presentation/pages/vehicles_page.dart';
 import 'screens/beranda_spv_screen.dart';
-import 'screens/checkin_screen.dart';
-import 'screens/checkout_screen.dart';
+import 'features/session_ops/presentation/pages/check_in_page.dart';
+import 'features/session_ops/presentation/pages/check_out_page.dart';
 
 void main() {
   runApp(const SmartParkApp());
@@ -158,9 +158,9 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
-  CheckOutScreen _checkOutScreen({ActiveVehicle? vehicle}) {
+  CheckOutPage _checkOutPage({ActiveVehicle? vehicle}) {
     final identity = _identity;
-    return CheckOutScreen(
+    return CheckOutPage(
       officerName: identity?.name ?? '',
       officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
       isSupervisor: identity?.isSupervisor ?? false,
@@ -175,7 +175,7 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
   }
 
   void _openCheckOutFor(ActiveVehicle vehicle) =>
-      _push(_checkOutScreen(vehicle: vehicle));
+      _push(_checkOutPage(vehicle: vehicle));
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +185,7 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
       1 => VehiclesPage(
           fallbackArea: identity?.areaLabel ?? '',
           onCheckOut: _openCheckOutFor,
-          onScanCheckOut: () => _push(_checkOutScreen()),
+          onScanCheckOut: () => _push(_checkOutPage()),
         ),
       2 => HistoryPageView(areaLabel: identity?.areaLabel ?? ''),
       _ => _homePage(identity),
@@ -206,14 +206,14 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
   Widget _homePage(OfficerIdentity? identity) {
     return OfficerHomePage(
       onOpenCheckIn: () => _push(
-        CheckInScreen(
+        CheckInPage(
           officerName: identity?.name ?? '',
           officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
           isSupervisor: identity?.isSupervisor ?? false,
           parkingLot: identity?.areaLabel ?? '',
         ),
       ),
-      onOpenCheckOut: () => _push(_checkOutScreen()),
+      onOpenCheckOut: () => _push(_checkOutPage()),
       onOpenVehicles: () => setState(() => _index = 1),
       onOpenHistory: () => setState(() => _index = 2),
       onLogout: _logout,

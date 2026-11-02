@@ -13,14 +13,33 @@ http.Response jsonResponse(Object body, {int status = 200}) {
 
 http.Response notFound() => http.Response('Not Found', 404);
 
+/// Membaca isi permintaan: JSON biasa atau field `multipart/form-data`.
+///
+/// `MockClient` menyerahkan multipart sebagai `http.Request` yang sudah
+/// difinalisasi, jadi field-nya diambil dari body mentah.
 Map<String, dynamic> decodeBody(http.BaseRequest request) {
-  if (request is http.Request) {
-    return (jsonDecode(request.body) as Map).cast<String, dynamic>();
-  }
   if (request is http.MultipartRequest) {
     return Map<String, dynamic>.from(request.fields);
   }
-  return const {};
+  if (request is! http.Request) return const {};
+
+  final contentType = request.headers['content-type'] ?? '';
+  if (contentType.startsWith('multipart/form-data')) {
+    final fields = <String, dynamic>{};
+    final pattern = RegExp(
+      r'name="([^"]+)"\r\n\r\n([\s\S]*?)\r\n--',
+      multiLine: true,
+    );
+    for (final match in pattern.allMatches(request.body)) {
+      final name = match.group(1);
+      if (name == null || name == 'photo') continue;
+      fields[name] = match.group(2);
+    }
+    return fields;
+  }
+
+  if (request.body.isEmpty) return const {};
+  return (jsonDecode(request.body) as Map).cast<String, dynamic>();
 }
 
 Map<String, dynamic> officerJson({

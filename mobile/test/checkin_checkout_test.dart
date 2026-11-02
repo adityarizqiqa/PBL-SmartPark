@@ -1,21 +1,28 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:mobile/api/api_client.dart';
-import 'package:mobile/models/session.dart';
-import 'package:mobile/screens/checkin_screen.dart';
-import 'package:mobile/screens/checkout_screen.dart';
+import 'package:mobile/core/di/providers.dart';
+import 'package:mobile/core/network/api_client.dart' as core;
+import 'package:mobile/core/entities/parking_session.dart';
+import 'package:mobile/features/session_ops/presentation/pages/check_in_page.dart';
+import 'package:mobile/features/session_ops/presentation/pages/check_out_page.dart';
+
+Widget _wrap(http.Client client, Widget child) {
+  return ProviderScope(
+    overrides: [
+      apiClientProvider.overrideWithValue(
+        core.ApiClient(client: client, baseUrl: 'http://test.local'),
+      ),
+    ],
+    child: MaterialApp(home: child),
+  );
+}
 
 void main() {
-  setUp(() {
-    ApiClient.defaultClient = null;
-  });
 
-  tearDown(() {
-    ApiClient.defaultClient = null;
-  });
 
   Map<String, dynamic> sampleSessionJson({
     int id = 89,
@@ -71,10 +78,10 @@ void main() {
         return http.Response('{}', 404);
       });
 
-      final client = ApiClient(client: mockClient);
+      final client = mockClient;
 
       await tester.pumpWidget(MaterialApp(
-        home: CheckInScreen(apiClient: client),
+        home: _wrap(client, CheckInPage()),
       ));
 
       // Step 1: Lanjut Scan Plat
@@ -119,10 +126,10 @@ void main() {
         return http.Response('{}', 404);
       });
 
-      final client = ApiClient(client: mockClient);
+      final client = mockClient;
 
       await tester.pumpWidget(MaterialApp(
-        home: CheckInScreen(apiClient: client),
+        home: _wrap(client, CheckInPage()),
       ));
 
       // Maju ke Step 3
@@ -172,10 +179,10 @@ void main() {
         return http.Response('{}', 404);
       });
 
-      final client = ApiClient(client: mockClient);
+      final client = mockClient;
 
       await tester.pumpWidget(MaterialApp(
-        home: CheckInScreen(apiClient: client),
+        home: _wrap(client, CheckInPage()),
       ));
 
       await tester.ensureVisible(find.text('Lanjut Scan Plat'));
@@ -240,12 +247,13 @@ void main() {
         return http.Response('{}', 404);
       });
 
-      final client = ApiClient(client: mockClient);
+      final client = mockClient;
 
-      await tester.pumpWidget(MaterialApp(
-        home: CheckOutScreen(
-          apiClient: client,
-          initialSession: SessionDetail.fromJson(sampleSessionJson(id: 89, plateIn: 'N 1234 ABC')),
+      await tester.pumpWidget(_wrap(
+        client,
+        CheckOutPage(
+          initialSession:
+              SessionDetail.fromJson(sampleSessionJson(id: 89, plateIn: 'N 1234 ABC')),
         ),
       ));
 
@@ -307,10 +315,10 @@ void main() {
         return http.Response('{}', 404);
       });
 
-      final client = ApiClient(client: mockClient);
+      final client = mockClient;
 
       await tester.pumpWidget(MaterialApp(
-        home: CheckOutScreen(apiClient: client),
+        home: _wrap(client, CheckOutPage()),
       ));
 
       // Lakukan pencarian
@@ -352,13 +360,11 @@ void main() {
         return http.Response('{}', 404);
       });
 
-      final client = ApiClient(client: mockClient);
+      final client = mockClient;
 
-      await tester.pumpWidget(MaterialApp(
-        home: CheckOutScreen(
-          apiClient: client,
-          initialSession: SessionDetail.fromJson(sampleSessionJson(id: 89)),
-        ),
+      await tester.pumpWidget(_wrap(
+        client,
+        CheckOutPage(initialSession: SessionDetail.fromJson(sampleSessionJson(id: 89))),
       ));
 
       // Tekan tombol Tolak Keluar
@@ -395,13 +401,11 @@ void main() {
         return http.Response('{}', 404);
       });
 
-      final client = ApiClient(client: mockClient);
+      final client = mockClient;
 
-      await tester.pumpWidget(MaterialApp(
-        home: CheckOutScreen(
-          apiClient: client,
-          initialSession: SessionDetail.fromJson(sampleSessionJson(id: 89)),
-        ),
+      await tester.pumpWidget(_wrap(
+        client,
+        CheckOutPage(initialSession: SessionDetail.fromJson(sampleSessionJson(id: 89))),
       ));
 
       // Tekan tombol Batalkan (Void)

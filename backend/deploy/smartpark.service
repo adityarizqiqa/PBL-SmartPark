@@ -1,0 +1,18 @@
+[Unit]
+Description=SmartPark API (FastAPI + uvicorn)
+After=network.target
+
+[Service]
+# Sesuaikan User bila menjalankan sebagai pengguna lain.
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/smartpark/backend
+# DEBUG wajib false di server: reload=True bikin uvicorn spawn reloader
+# dan bentrok dengan systemd (proses utama mati, "Removed /v1/tty" error).
+Environment=PATH=/opt/smartpark/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/opt/smartpark/backend/.venv/bin/python -m app
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

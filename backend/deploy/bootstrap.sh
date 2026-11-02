@@ -7,8 +7,8 @@
 #   bash bootstrap.sh
 set -euo pipefail
 
-REPO="${REPO:-git@github.com:adityarizqiqa/PBL-SMT5-KELOMPOK-4.git}"
-BRANCH="${BRANCH:-Develop}"
+REPO="${REPO:-git@github.com:adityarizqiqa/PBL-SmartPark.git}"
+BRANCH="${BRANCH:-main}"
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/smartpark}"
 SERVICE_USER="${SERVICE_USER:-deploy}"
 

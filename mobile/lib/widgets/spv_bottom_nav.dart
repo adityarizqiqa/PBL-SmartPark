@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
+import '../core/theme/app_colors.dart';
 import '../screens/beranda_spv_screen.dart';
 import '../screens/kelola_lahan_screen.dart';
 import '../screens/kelola_petugas_screen.dart';

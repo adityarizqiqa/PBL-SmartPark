@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
+import '../core/theme/app_colors.dart';
 
 /// Top app bar for the SPV (pengawas) console.
 /// Mirrors the canonical app bar used in tmp/uiux/14-16 screens.

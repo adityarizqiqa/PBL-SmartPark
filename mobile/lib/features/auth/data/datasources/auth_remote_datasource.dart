@@ -52,4 +52,7 @@ class AuthRemoteDataSource {
   }
 
   Future<void> signOut() => _client.post(Endpoints.signOut);
+
+  Future<void> leaveShift({required String note}) =>
+      _client.post(Endpoints.leaveShift, body: {'note': note});
 }

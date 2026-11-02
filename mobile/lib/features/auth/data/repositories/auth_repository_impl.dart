@@ -83,4 +83,13 @@ class AuthRepositoryImpl implements AuthRepository {
       throw Failure.fromApiException(error);
     }
   }
+
+  @override
+  Future<void> leaveShift({required String note}) async {
+    try {
+      await _remote.leaveShift(note: note);
+    } on ApiException catch (error) {
+      throw Failure.fromApiException(error);
+    }
+  }
 }

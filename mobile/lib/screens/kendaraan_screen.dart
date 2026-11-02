@@ -3,7 +3,6 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../core/theme/app_colors.dart';
 import '../models/models.dart';
-import 'beranda_screen.dart';
 import 'checkout_screen.dart';
 import 'riwayat_screen.dart';
 
@@ -507,16 +506,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
                 // Back Button
                 IconButton(
                   onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => BerandaScreen(
-                          officerName: widget.officerName,
-                          officerRole: widget.officerRole,
-                          isSupervisor: widget.isSupervisor,
-                          parkingLot: widget.parkingLot,
-                        ),
-                      ),
-                    );
+                    Navigator.of(context).popUntil((route) => route.isFirst);
                   },
                   icon: const Icon(Icons.arrow_back_rounded, size: 20),
                   color: AppColors.spInk,
@@ -1385,16 +1375,7 @@ class _KendaraanScreenState extends State<KendaraanScreen> {
         currentIndex: _selectedNavIndex,
         onTap: (index) {
           if (index == 0) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => BerandaScreen(
-                  officerName: widget.officerName,
-                  officerRole: widget.officerRole,
-                  isSupervisor: widget.isSupervisor,
-                  parkingLot: widget.parkingLot,
-                ),
-              ),
-            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
           } else if (index == 2) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(

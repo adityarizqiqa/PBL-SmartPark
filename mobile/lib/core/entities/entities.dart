@@ -3,7 +3,6 @@ export 'active_session.dart';
 export 'api_error_body.dart';
 export 'area.dart';
 export 'assignment.dart';
-export 'dashboard.dart';
 export 'history_item.dart';
 export 'lookup_result.dart';
 export 'officer.dart';

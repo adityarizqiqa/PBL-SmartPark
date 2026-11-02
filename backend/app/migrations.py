@@ -209,19 +209,3 @@ def _rebuild_table(table: str) -> None:
         raise
     finally:
         raw.close()
-
-
-def ensure_spv_exists() -> bool:
-    """True bila sudah ada minimal satu pengawas.
-
-    Tanpa pengawas, tidak ada yang bisa menambah lahan atau mengatur shift.
-    """
-    inspector = inspect(engine)
-    if "officers" not in set(inspector.get_table_names()):
-        return False
-
-    with engine.begin() as conn:
-        found = conn.execute(
-            text("SELECT id FROM officers WHERE role = 'spv' LIMIT 1")
-        ).first()
-    return found is not None

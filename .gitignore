@@ -39,3 +39,20 @@ yarn-error.log*
 *.rej
 
 tmp/
+
+# Runtime data — jangan pernah ikut versioning (defense in depth di root;
+# subfolder backend already-ignores ini, ini backstop kalau muncul di tempat lain).
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+storage/
+
+# Flutter/Dart build (backstop; mobile/.gitignore juga menangani ini)
+.dart_tool/
+build/
+
+# Gradle/Android local (backstop; mobile/android/.gitignore juga menangani ini)
+.gradle/
+local.properties

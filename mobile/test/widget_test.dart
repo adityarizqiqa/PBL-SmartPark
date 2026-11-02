@@ -3,97 +3,170 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:mobile/api/api_client.dart';
-import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
-import 'package:mobile/screens/beranda_screen.dart';
-import 'package:mobile/screens/kendaraan_screen.dart';
-import 'package:mobile/screens/riwayat_screen.dart';
+import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
+import 'package:mobile/features/vehicles/presentation/pages/vehicles_page.dart';
+import 'package:mobile/features/history/presentation/pages/history_page_view.dart';
 
-ApiClient _createTestApiClient() {
-  return ApiClient(
-    client: MockClient((request) async {
-      if (request.url.path == '/api/officers') {
-        return http.Response(
-          jsonEncode([
-            {
-              'id': 1,
-              'employee_no': 'PK001',
-              'name': 'Budi Santoso',
-              'phone': '0812',
-              'role': 'officer',
-              'is_active': true,
-              'has_password': true,
-            },
-          ]),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      } else if (request.url.path == '/api/areas') {
-        return http.Response(
-          jsonEncode([
-            {
-              'id': 1,
-              'code': 'POS-UTAMA',
-              'name': 'Pos Parkir Utama',
-              'is_active': true,
-            },
-          ]),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      } else if (request.url.path == '/api/shifts/join') {
-        return http.Response(
-          jsonEncode({
-            'token': 'shift-tok-test',
-            'assignment': {
-              'id': 1,
-              'shift_id': 1,
-              'officer_id': 1,
-              'officer_name': 'Budi Santoso',
-              'joined_at': '2026-10-12T07:00:00',
-              'left_at': null,
-              'left_note': null,
-            },
-            'shift': {
-              'id': 1,
-              'parking_area_id': 1,
-              'area_name': 'Pos Parkir Utama',
-              'started_at': '2026-10-12T07:00:00',
-              'ended_at': null,
-              'end_note': null,
-              'is_open': true,
-              'assignments': [],
-            },
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      } else if (request.url.path == '/api/sessions/dashboard') {
-        return http.Response(
-          jsonEncode({
-            'active_now': 428,
-            'checked_in_today': 852,
-            'checked_out_today': 424,
-            'recent': [],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }
-      return http.Response('Not Found', 404);
-    }),
-  );
-}
-
-void main() {
-  setUp(() {
-    SessionStore.instance.clear();
-    ApiClient.defaultClient = MockClient((request) async {
-      final path = request.url.path;
-      if (path == '/api/sessions/check-in') {
-        return http.Response(
-          jsonEncode({
+http.Client _createTestHttpClient() {
+  return MockClient((request) async {
+    if (request.url.path == '/api/officers') {
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 1,
+            'employee_no': 'PK001',
+            'name': 'Budi Santoso',
+            'phone': '0812',
+            'role': 'officer',
+            'is_active': true,
+            'has_password': true,
+          },
+        ]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    } else if (request.url.path == '/api/areas') {
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 1,
+            'code': 'POS-UTAMA',
+            'name': 'Pos Parkir Utama',
+            'is_active': true,
+          },
+        ]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    } else if (request.url.path == '/api/shifts/join') {
+      return http.Response(
+        jsonEncode({
+          'token': 'shift-tok-test',
+          'assignment': {
+            'id': 1,
+            'shift_id': 1,
+            'officer_id': 1,
+            'officer_name': 'Budi Santoso',
+            'joined_at': '2026-10-12T07:00:00',
+            'left_at': null,
+            'left_note': null,
+          },
+          'shift': {
+            'id': 1,
+            'parking_area_id': 1,
+            'area_name': 'Pos Parkir Utama',
+            'started_at': '2026-10-12T07:00:00',
+            'ended_at': null,
+            'end_note': null,
+            'is_open': true,
+            'assignments': [],
+          },
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    } else if (request.url.path == '/api/sessions/history') {
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 31,
+            'nim': '244107020204',
+            'plate_in': 'N 1234 ABC',
+            'plate_out': 'N 1234 ABC',
+            'checked_in_at': '2026-10-12T07:30:00',
+            'checked_out_at': '2026-10-12T10:54:00',
+            'status': 'matched',
+            'verification_note': null,
+          },
+        ]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    } else if (request.url.path == '/api/sessions/history/meta') {
+      return http.Response(
+        jsonEncode({'total': 45, 'limit': 20, 'offset': 0}),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    } else if (request.url.path == '/api/sessions/dashboard') {
+      return http.Response(
+        jsonEncode({
+          'active_now': 428,
+          'checked_in_today': 852,
+          'checked_out_today': 424,
+          'recent': [],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final path = request.url.path;
+    if (path == '/api/sessions/check-in') {
+      return http.Response(
+        jsonEncode({
+          'id': 89,
+          'nim': '244107020204',
+          'plate_in': 'N 1234 ABC',
+          'plate_out': null,
+          'checked_in_at': '2026-10-12T07:32:00.000Z',
+          'checked_out_at': null,
+          'status': 'active',
+          'match_method': 'plate_exact',
+          'verification_note': null,
+          'plate_in_photo_path': null,
+          'plate_out_photo_path': null,
+          'area_id': 1,
+          'area_name': 'POS-UTAMA • Pos Parkir Utama',
+          'checked_in_by': {
+            'assignment_id': 1,
+            'officer_id': 1,
+            'officer_name': 'Budi Santoso',
+          },
+          'checked_out_by': null,
+          'events': [],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path.startsWith('/api/sessions/') && path.endsWith('/check-out')) {
+      return http.Response(
+        jsonEncode({
+          'id': 89,
+          'nim': '244107020204',
+          'plate_in': 'N 1234 ABC',
+          'plate_out': 'N 1234 ABC',
+          'checked_in_at': '2026-10-12T07:32:00.000Z',
+          'checked_out_at': '2026-10-12T11:00:00.000Z',
+          'status': 'matched',
+          'match_method': 'plate_exact',
+          'verification_note': null,
+          'plate_in_photo_path': null,
+          'plate_out_photo_path': null,
+          'area_id': 1,
+          'area_name': 'POS-UTAMA • Pos Parkir Utama',
+          'checked_in_by': {
+            'assignment_id': 1,
+            'officer_id': 1,
+            'officer_name': 'Budi Santoso',
+          },
+          'checked_out_by': {
+            'assignment_id': 1,
+            'officer_id': 1,
+            'officer_name': 'Budi Santoso',
+          },
+          'events': [],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path == '/api/sessions/lookup') {
+      return http.Response(
+        jsonEncode({
+          'match_method': 'plate_exact',
+          'session': {
             'id': 89,
             'nim': '244107020204',
             'plate_in': 'N 1234 ABC',
@@ -114,150 +187,94 @@ void main() {
             },
             'checked_out_by': null,
             'events': [],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }
-      if (path.startsWith('/api/sessions/') && path.endsWith('/check-out')) {
-        return http.Response(
-          jsonEncode({
-            'id': 89,
-            'nim': '244107020204',
-            'plate_in': 'N 1234 ABC',
-            'plate_out': 'N 1234 ABC',
-            'checked_in_at': '2026-10-12T07:32:00.000Z',
-            'checked_out_at': '2026-10-12T11:00:00.000Z',
-            'status': 'matched',
-            'match_method': 'plate_exact',
-            'verification_note': null,
-            'plate_in_photo_path': null,
-            'plate_out_photo_path': null,
-            'area_id': 1,
-            'area_name': 'POS-UTAMA • Pos Parkir Utama',
-            'checked_in_by': {
-              'assignment_id': 1,
-              'officer_id': 1,
-              'officer_name': 'Budi Santoso',
-            },
-            'checked_out_by': {
-              'assignment_id': 1,
-              'officer_id': 1,
-              'officer_name': 'Budi Santoso',
-            },
-            'events': [],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }
-      if (path == '/api/sessions/lookup') {
-        return http.Response(
-          jsonEncode({
-            'match_method': 'plate_exact',
-            'session': {
-              'id': 89,
-              'nim': '244107020204',
-              'plate_in': 'N 1234 ABC',
-              'plate_out': null,
-              'checked_in_at': '2026-10-12T07:32:00.000Z',
-              'checked_out_at': null,
-              'status': 'active',
-              'match_method': 'plate_exact',
-              'verification_note': null,
-              'plate_in_photo_path': null,
-              'plate_out_photo_path': null,
-              'area_id': 1,
-              'area_name': 'POS-UTAMA • Pos Parkir Utama',
-              'checked_in_by': {
-                'assignment_id': 1,
-                'officer_id': 1,
-                'officer_name': 'Budi Santoso',
-              },
-              'checked_out_by': null,
-              'events': [],
-            },
-            'candidates': [],
-            'message': null,
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }
-      return http.Response('{}', 200, headers: {'content-type': 'application/json'});
-    });
+          },
+          'candidates': [],
+          'message': null,
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return http.Response('Not Found', 404);
   });
+}
 
-  tearDown(() {
-    ApiClient.defaultClient = null;
-    SessionStore.instance.clear();
-  });
+void main() {
+  testWidgets(
+    'Full flow test: Login -> Beranda -> Kendaraan -> Riwayat Screen',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-  testWidgets('Full flow test: Login -> Beranda -> Kendaraan -> Riwayat Screen', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        SmartParkApp(httpClient: _createTestHttpClient()),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify key Login UI elements exist
+      expect(find.text('SmartPark'), findsOneWidget);
+      expect(find.text('KAMPUS'), findsOneWidget);
+      expect(find.text('Aktivasi Sesi Pos Lahan'), findsOneWidget);
+      expect(find.text('Budi Santoso'), findsOneWidget);
+      expect(find.text('Mulai Bertugas'), findsOneWidget);
+
+      // Enter password
+      await tester.enterText(find.byType(TextFormField), 'password123');
+
+      // Ensure button is visible & tap 'Mulai Bertugas'
+      await tester.ensureVisible(find.text('Mulai Bertugas'));
+      await tester.tap(find.text('Mulai Bertugas'));
+      await tester.pumpAndSettle();
+
+      // Verify that BerandaScreen is displayed
+      expect(find.byType(OfficerHomePage), findsOneWidget);
+      expect(find.text('Beranda Petugas'), findsOneWidget);
+      expect(find.text('CHECK-IN'), findsOneWidget);
+      expect(find.text('CHECK-OUT'), findsOneWidget);
+      expect(find.text('Sedang Parkir'), findsOneWidget);
+      expect(find.text('AKSI CEPAT GERBANG'), findsOneWidget);
+      expect(find.text('STATISTIK OPERASIONAL'), findsOneWidget);
+      expect(find.text('AKTIVITAS TERAKHIR DI POS'), findsOneWidget);
+
+      // Dismiss any active floating SnackBar from login
+      ScaffoldMessenger.of(
+        tester.element(find.byType(OfficerHomePage)),
+      ).hideCurrentSnackBar();
+      await tester.pumpAndSettle();
+
+      // Tap on 'Kendaraan' in BottomNavigationBar
+      await tester.tap(find.byIcon(Icons.directions_car_outlined));
+      await tester.pumpAndSettle();
+
+      // Verify that KendaraanScreen is displayed
+      expect(find.byType(VehiclesPage), findsOneWidget);
+      expect(find.text('Kendaraan Sedang\nParkir'), findsOneWidget);
+      expect(find.text('Cari NIM atau Plat Nomor...'), findsOneWidget);
+      expect(find.text('Scan Check-Out'), findsOneWidget);
+
+      // Tap on 'Riwayat' in BottomNavigationBar from KendaraanScreen
+      await tester.tap(find.byIcon(Icons.history_rounded));
+      await tester.pumpAndSettle();
+
+      // Verify that RiwayatScreen is displayed
+      expect(find.byType(HistoryPageView), findsOneWidget);
+      expect(find.text('Riwayat Sesi Parkir'), findsOneWidget);
+      expect(find.text('RIWAYAT SESI'), findsOneWidget);
+      // Ringkasan memakai data nyata dari /history/meta dan baris yang dimuat.
+      expect(find.text('45'), findsOneWidget);
+      expect(find.text('1-20 dari 45'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Check-In Flow test: Step 1 -> Step 2 -> Step 3 -> Finish', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(SmartParkApp(apiClient: _createTestApiClient()));
-    await tester.pumpAndSettle();
-
-    // Verify key Login UI elements exist
-    expect(find.text('SmartPark'), findsOneWidget);
-    expect(find.text('KAMPUS'), findsOneWidget);
-    expect(find.text('Aktivasi Sesi Pos Lahan'), findsOneWidget);
-    expect(find.text('Budi Santoso'), findsOneWidget);
-    expect(find.text('Mulai Bertugas'), findsOneWidget);
-
-    // Enter password
-    await tester.enterText(find.byType(TextFormField), 'password123');
-
-    // Ensure button is visible & tap 'Mulai Bertugas'
-    await tester.ensureVisible(find.text('Mulai Bertugas'));
-    await tester.tap(find.text('Mulai Bertugas'));
-    await tester.pumpAndSettle();
-
-    // Verify that BerandaScreen is displayed
-    expect(find.byType(BerandaScreen), findsOneWidget);
-    expect(find.text('Beranda Petugas'), findsOneWidget);
-    expect(find.text('CHECK-IN'), findsOneWidget);
-    expect(find.text('CHECK-OUT'), findsOneWidget);
-    expect(find.text('Sedang Parkir'), findsOneWidget);
-    expect(find.text('AKSI CEPAT GERBANG'), findsOneWidget);
-    expect(find.text('STATISTIK OPERASIONAL'), findsOneWidget);
-    expect(find.text('AKTIVITAS TERAKHIR DI POS'), findsOneWidget);
-
-    // Dismiss any active floating SnackBar from login
-    ScaffoldMessenger.of(tester.element(find.byType(BerandaScreen))).hideCurrentSnackBar();
-    await tester.pumpAndSettle();
-
-    // Tap on 'Kendaraan' in BottomNavigationBar
-    await tester.tap(find.byIcon(Icons.directions_car_outlined));
-    await tester.pumpAndSettle();
-
-    // Verify that KendaraanScreen is displayed
-    expect(find.byType(KendaraanScreen), findsOneWidget);
-    expect(find.text('Kendaraan Sedang\nParkir'), findsOneWidget);
-    expect(find.text('Cari NIM atau Plat Nomor...'), findsOneWidget);
-    expect(find.text('Scan Check-Out'), findsOneWidget);
-
-    // Tap on 'Riwayat' in BottomNavigationBar from KendaraanScreen
-    await tester.tap(find.byIcon(Icons.history_rounded));
-    await tester.pumpAndSettle();
-
-    // Verify that RiwayatScreen is displayed
-    expect(find.byType(RiwayatScreen), findsOneWidget);
-    expect(find.text('Riwayat Sesi Parkir'), findsOneWidget);
-    expect(find.text('RIWAYAT SESI'), findsOneWidget);
-    expect(find.text('852'), findsOneWidget);
-    expect(find.text('835'), findsOneWidget);
-  });
-
-  testWidgets('Check-In Flow test: Step 1 -> Step 2 -> Step 3 -> Finish', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 2.5;
-    addTearDown(() => tester.view.resetPhysicalSize());
-
-    await tester.pumpWidget(SmartParkApp(apiClient: _createTestApiClient()));
+    await tester.pumpWidget(SmartParkApp(httpClient: _createTestHttpClient()));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextFormField), 'password123');
@@ -295,8 +312,12 @@ void main() {
     expect(find.text('Siap Check-In'), findsOneWidget);
 
     // Tap Konfirmasi Check-In
-    await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'));
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'));
+    await tester.ensureVisible(
+      find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'),
+    );
+    await tester.tap(
+      find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'),
+    );
     await tester.pump(const Duration(milliseconds: 300));
 
     // Success dialog
@@ -304,15 +325,17 @@ void main() {
     await tester.tap(find.text('Ke Beranda'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(BerandaScreen), findsOneWidget);
+    expect(find.byType(OfficerHomePage), findsOneWidget);
   });
 
-  testWidgets('Check-Out Flow test: Verification -> Confirm Check-Out', (WidgetTester tester) async {
+  testWidgets('Check-Out Flow test: Verification -> Confirm Check-Out', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(SmartParkApp(apiClient: _createTestApiClient()));
+    await tester.pumpWidget(SmartParkApp(httpClient: _createTestHttpClient()));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextFormField), 'password123');
@@ -346,6 +369,6 @@ void main() {
     await tester.tap(find.text('Selesai & Ke Beranda'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(BerandaScreen), findsOneWidget);
+    expect(find.byType(OfficerHomePage), findsOneWidget);
   });
 }

@@ -1,0 +1,557 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/entities/lookup_result.dart';
+import '../../../../core/entities/parking_session.dart';
+import '../../../../core/failures/failure.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/di/providers.dart';
+import '../providers/session_providers.dart';
+
+/// Screen for Check-Out Flow & Vehicle Verification
+/// Mapped from Figma prototypes:
+/// - 06-checkout-verifikasi-kendaraan.html (Check-Out: Verifikasi Kendaraan & KTM)
+/// - 13-verifikasi-manual-petugas.html (Verifikasi Manual Petugas)
+part 'check_out_dialogs.dart';
+part 'check_out_lookup.dart';
+part 'check_out_verification.dart';
+
+class CheckOutPage extends ConsumerStatefulWidget {
+  final String officerName;
+  final String officerRole;
+  final bool isSupervisor;
+  final String parkingLot;
+  final String nim;
+  final String checkInPlate;
+  final String checkInTime;
+  final SessionDetail? initialSession;
+
+  const CheckOutPage({
+    super.key,
+    this.officerName = 'Budi Santoso',
+    this.officerRole = 'Petugas Gerbang',
+    this.isSupervisor = false,
+    this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
+    this.nim = '244107020204',
+    this.checkInPlate = 'N 1234 ABC',
+    this.checkInTime = '07:32 WIB',
+    this.initialSession,
+  });
+
+  @override
+  ConsumerState<CheckOutPage> createState() => _CheckOutPageState();
+}
+
+class _CheckOutPageState extends ConsumerState<CheckOutPage> {
+  int _selectedNavIndex = 0;
+
+  // Sesi & hasil pencarian aktif
+  SessionDetail? _session;
+  String? _matchMethod;
+  List<LookupCandidate> _candidates = const [];
+  String? _lookupMessage;
+
+  // Kontroler formulir
+  late final TextEditingController _outPlateController;
+  late final TextEditingController _nimFallbackController;
+  final TextEditingController _manualNoteController = TextEditingController();
+  final TextEditingController _actionNoteController = TextEditingController();
+
+  // Status operasi
+  bool _ktmChecked = false;
+  bool _isSearching = false;
+  bool _isSubmitting = false;
+  bool _showManualForm = false;
+  bool _showNimSearch = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _outPlateController = TextEditingController(text: widget.checkInPlate);
+    _nimFallbackController = TextEditingController(text: widget.nim);
+
+    if (widget.initialSession != null) {
+      _session = widget.initialSession;
+      _matchMethod = _session!.matchMethod ?? 'plate_exact';
+    } else {
+      // Inisialisasi awal fallback agar layar langsung tampil siap uji/verifikasi
+      _session = SessionDetail(
+        id: 89,
+        nim: widget.nim,
+        plateIn: widget.checkInPlate,
+        plateOut: null,
+        checkedInAt: DateTime.now().subtract(const Duration(hours: 3, minutes: 24)),
+        checkedOutAt: null,
+        status: 'active',
+        matchMethod: 'plate_exact',
+        verificationNote: null,
+        plateInPhotoPath: null,
+        plateOutPhotoPath: null,
+        areaId: 1,
+        areaName: widget.parkingLot,
+        checkedInBy: const SessionOfficer(
+          assignmentId: 1,
+          officerId: 1,
+          officerName: 'Budi Santoso',
+        ),
+        checkedOutBy: null,
+        events: const [],
+      );
+      _matchMethod = 'plate_exact';
+
+      // Bila ada token sesi shift aktif, lakukan lookup otomatis ke backend
+      if (ref.read(sessionStoreProvider).shiftToken != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _performLookup(widget.checkInPlate, nim: widget.nim);
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _outPlateController.dispose();
+    _nimFallbackController.dispose();
+    _manualNoteController.dispose();
+    _actionNoteController.dispose();
+    super.dispose();
+  }
+
+  String get _currentCheckOutPlate => _outPlateController.text.trim().toUpperCase();
+
+  String get _checkInPlate => _session?.plateIn ?? widget.checkInPlate;
+
+  String get _currentNim => _session?.nim ?? widget.nim;
+
+  String get _checkInTime {
+    if (_session != null) {
+      return _formatTime(_session!.checkedInAt);
+    }
+    return widget.checkInTime;
+  }
+
+  String get _checkOutTime => _formatTime(DateTime.now());
+
+  String _formatTime(DateTime dt) {
+    final local = dt.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$h:$m WIB';
+  }
+
+  String get _duration {
+    if (_session == null) return '0m';
+    final diff = DateTime.now().difference(_session!.checkedInAt.toLocal());
+    final totalMinutes = diff.inMinutes;
+    if (totalMinutes <= 0) return '0m';
+    final hours = totalMinutes ~/ 60;
+    final mins = totalMinutes % 60;
+    if (hours == 0) return '${mins}m';
+    return '${hours}j ${mins}m';
+  }
+
+  String get _sessionId {
+    if (_session != null) {
+      return 'ID: PRK-${_session!.id.toString().padLeft(6, '0')}';
+    }
+    return 'ID: PRK-240502-089';
+  }
+
+  bool get _isPlateMatched {
+    if (_session == null) return false;
+    final inP = _session!.plateIn.replaceAll(' ', '').toUpperCase();
+    final outP = _currentCheckOutPlate.replaceAll(' ', '').toUpperCase();
+    return inP == outP;
+  }
+
+  Future<void> _performLookup(String plate, {String? nim}) async {
+    final cleanPlate = plate.trim().toUpperCase();
+    if (cleanPlate.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Masukkan plat nomor untuk mencari sesi.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _lookupMessage = null;
+      _candidates = const [];
+    });
+
+    try {
+      final query = <String, dynamic>{'plate': cleanPlate};
+      if (nim != null && nim.trim().isNotEmpty) {
+        query['nim'] = nim.trim();
+      }
+
+      final result = await ref.read(sessionRepositoryProvider).lookup(
+            plate: cleanPlate,
+            nim: nim,
+          );
+      if (!mounted) return;
+      setState(() {
+        _isSearching = false;
+        _matchMethod = result.matchMethod;
+        if (result.session != null) {
+          _session = result.session;
+          _candidates = const [];
+          _lookupMessage = null;
+          _nimFallbackController.text = result.session!.nim;
+        } else if (result.candidates.isNotEmpty) {
+          _session = null;
+          _candidates = result.candidates;
+          _lookupMessage = null;
+        } else {
+          _session = null;
+          _candidates = const [];
+          _lookupMessage = result.message ?? 'Sesi tidak ditemukan.';
+        }
+      });
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      setState(() {
+        _isSearching = false;
+        _lookupMessage = failure.message;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
+      );
+    }
+  }
+
+  Future<void> _selectCandidate(LookupCandidate candidate) async {
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final detail =
+          await ref.read(sessionRepositoryProvider).session(candidate.sessionId);
+      if (!mounted) return;
+      setState(() {
+        _session = detail;
+        _matchMethod = 'plate_similar';
+        _candidates = const [];
+        _isSearching = false;
+        _showManualForm = true;
+      });
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+    }
+  }
+
+  Future<void> _handleConfirmCheckOut() async {
+    if (_session == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak ada sesi aktif yang dipilih.')),
+      );
+      return;
+    }
+
+    final isMatched = _isPlateMatched;
+    final note = _manualNoteController.text.trim();
+
+    if (!isMatched && note.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text('Verifikasi manual wajib disertai catatan.'),
+        ),
+      );
+      setState(() {
+        _showManualForm = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final closedSession = await ref.read(sessionRepositoryProvider).checkOut(
+            id: _session!.id,
+            plate: _currentCheckOutPlate,
+            status: isMatched ? 'matched' : 'manual_verified',
+            note: isMatched ? null : note,
+            matchMethod:
+                _matchMethod ?? (isMatched ? 'plate_exact' : 'plate_similar'),
+          );
+
+      if (!mounted) return;
+
+      setState(() {
+        _session = closedSession;
+        _isSubmitting = false;
+      });
+
+      _showSuccessDialog(closedSession);
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(
+            failure.message.isNotEmpty ? failure.message : 'Gagal check-out.',
+          ),
+        ),
+      );
+    }
+  }
+
+
+  void _handleManualClearance() {
+    if (_manualNoteController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text('Harap masukkan catatan verifikasi fisik terlebih dahulu.'),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.spSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.shield_outlined, color: AppColors.spPrimary600),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Konfirmasi Manual?',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Anda menyetujui pelepasan kendaraan $_currentCheckOutPlate dengan verifikasi visual fisik STNK & KTM.',
+          style: const TextStyle(fontSize: 13, color: AppColors.spInk2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Batal', style: TextStyle(color: AppColors.spInk3)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _handleConfirmCheckOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.spPrimary600,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Buka Palang Manual'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Future<void> _submitReject(String note) async {
+    setState(() => _isSubmitting = true);
+    try {
+      await ref
+          .read(sessionRepositoryProvider)
+          .reject(_session!.id, note: note);
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.spWarn,
+          content: Text('Check-out sesi #${_session!.id} berhasil ditolak. Sesi tetap aktif.'),
+        ),
+      );
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
+      );
+    }
+  }
+
+
+  Future<void> _submitVoid(String note) async {
+    setState(() => _isSubmitting = true);
+    try {
+      await ref
+          .read(sessionRepositoryProvider)
+          .voidSession(_session!.id, note: note);
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _session = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.spSuccess,
+          content: Text('Sesi check-in berhasil dibatalkan (voided).'),
+        ),
+      );
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
+      );
+    }
+  }
+
+  /// Memicu rebuild dari bagian UI yang dipisah ke `part` file.
+  void rebuild(VoidCallback fn) => setState(fn);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.spBg,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              children: [
+                _buildAppBar(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTesterSelector(),
+                        const SizedBox(height: 12),
+                        _buildLookupSearchCard(),
+                        if (_candidates.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          _buildCandidatesSection(),
+                        ],
+                        if (_lookupMessage != null) ...[
+                          const SizedBox(height: 12),
+                          _buildLookupMessageBanner(),
+                        ],
+                        const SizedBox(height: 14),
+                        _buildLiveStatusBanner(),
+                        const SizedBox(height: 14),
+                        _buildPlateComparisonCard(),
+                        const SizedBox(height: 14),
+                        _buildActiveSessionMetadata(),
+                        const SizedBox(height: 14),
+                        if (!_isPlateMatched || _showManualForm) ...[
+                          _buildManualVerificationSection(),
+                          const SizedBox(height: 14),
+                        ],
+                        _buildActionControls(),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                _buildBottomNav(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 1. Canonical App Bar
+
+  /// 2. Mode Tester Selector
+
+  /// Lookup search input card
+
+  /// Candidates list when plate_similar returns matches
+
+  /// Lookup message or error banner
+
+  /// 3. Live Status Highlight Banner
+
+  /// 4. Side-by-Side Visual & Plate Comparison Card
+
+  /// 5. Session & Identity Metadata (Glance Zone)
+
+  Widget _buildMetaCell(
+    String label,
+    String value, {
+    bool flexWidth = false,
+    bool isBrand = false,
+    bool isDanger = false,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = flexWidth ? (constraints.maxWidth - 8) / 2 : null;
+        return Container(
+          width: itemWidth,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isDanger ? AppColors.spDangerBg : AppColors.spTint1,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: isDanger ? AppColors.spDangerInk : AppColors.spInk2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: isDanger
+                      ? AppColors.spDangerInk
+                      : isBrand
+                          ? AppColors.spPrimary600
+                          : AppColors.spInk,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Optional Manual Verification Card (13-verifikasi-manual-petugas.html)
+
+  /// 6. Action Controls (Checkbox & Confirm Button)
+
+  /// Canonical Bottom Navigation
+}

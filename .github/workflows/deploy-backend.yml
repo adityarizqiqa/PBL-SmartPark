@@ -1,0 +1,40 @@
+name: Deploy backend
+
+# Dorong ke branch Develop -> server menarik sendiri dan me-restart layanan.
+# Tidak perlu lagi zip & kirim manual.
+on:
+  push:
+    branches: [Develop]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {}   # biar bisa dipicu manual dari tab Actions
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH (git pull + install + restart)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_DEPLOY_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            cd "${DEPLOY_DIR:-/opt/smartpark}"
+
+            # Hanya maju-linear; kalau server sempat diubah manual, deploy
+            # dibatalkan daripada menimpa diam-diam.
+            git fetch origin
+            git checkout Develop
+            git pull --ff-only origin Develop
+
+            # Pasang ulang dependensi sesuai lockfile (dunia server == dunia CI).
+            backend/.venv/bin/pip install -r backend/requirements.txt --quiet
+
+            # .env, smartpark.db, dan storage/ semua di-gitignore, jadi
+            # perintah di atas tidak menyentuh data maupun foto di server.
+            sudo systemctl restart smartpark
+            echo "Deploy selesai: $(git rev-parse --short HEAD)"

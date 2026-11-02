@@ -1,5 +1,7 @@
 /// Baris daftar kendaraan yang masih parkir.
-class ActiveSession {
+///
+/// `durationMinutes` dihitung backend saat dibaca, bukan disimpan.
+class ActiveVehicle {
   final int id;
   final String nim;
   final String plateIn;
@@ -9,7 +11,7 @@ class ActiveSession {
   final String areaName;
   final String checkedInBy;
 
-  const ActiveSession({
+  const ActiveVehicle({
     required this.id,
     required this.nim,
     required this.plateIn,
@@ -20,8 +22,8 @@ class ActiveSession {
     required this.checkedInBy,
   });
 
-  factory ActiveSession.fromJson(Map<String, dynamic> json) {
-    return ActiveSession(
+  factory ActiveVehicle.fromJson(Map<String, dynamic> json) {
+    return ActiveVehicle(
       id: json['id'] as int,
       nim: json['nim'] as String,
       plateIn: json['plate_in'] as String,

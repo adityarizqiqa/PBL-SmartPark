@@ -7,7 +7,6 @@ import 'package:http/testing.dart';
 import 'package:mobile/core/di/providers.dart';
 import 'package:mobile/core/network/api_client.dart';
 import 'package:mobile/core/session/session_store.dart';
-import 'package:mobile/core/session/session_store.dart';
 import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
 
 import '../../helpers/fixtures.dart';

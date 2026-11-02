@@ -4,7 +4,6 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../core/theme/app_colors.dart';
 import '../models/models.dart';
-import 'kendaraan_screen.dart';
 
 /// Screen 04 — Riwayat Sesi Parkir
 /// Mapped from Figma node 15:608 (tmp/uiux/04-riwayat-transaksi-parkir.html)
@@ -1660,16 +1659,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           if (index == 0) {
             Navigator.of(context).popUntil((route) => route.isFirst);
           } else if (index == 1) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => KendaraanScreen(
-                  officerName: widget.officerName,
-                  officerRole: widget.officerRole,
-                  isSupervisor: widget.isSupervisor,
-                  parkingLot: widget.parkingLot,
-                ),
-              ),
-            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
           } else {
             setState(() {
               _selectedNavIndex = index;

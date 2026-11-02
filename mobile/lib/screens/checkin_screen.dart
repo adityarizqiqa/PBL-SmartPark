@@ -4,7 +4,6 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../core/theme/app_colors.dart';
 import '../models/session.dart';
-import 'kendaraan_screen.dart';
 import 'riwayat_screen.dart';
 
 /// Screen for Check-In Vehicle Flow (Steps 1, 1-alt, 2, 3)
@@ -3398,16 +3397,7 @@ class _CheckInScreenState extends State<CheckInScreen>
           if (index == 0) {
             Navigator.of(context).popUntil((route) => route.isFirst);
           } else if (index == 1) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => KendaraanScreen(
-                  officerName: widget.officerName,
-                  officerRole: widget.officerRole,
-                  isSupervisor: widget.isSupervisor,
-                  parkingLot: widget.parkingLot,
-                ),
-              ),
-            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
           } else if (index == 2) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(

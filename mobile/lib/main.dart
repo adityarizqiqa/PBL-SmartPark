@@ -6,15 +6,18 @@ import 'api/session_store.dart' as legacy;
 import 'core/di/providers.dart';
 import 'core/network/api_client.dart';
 import 'core/session/officer_identity.dart';
+import 'core/utils/formatters.dart';
+import 'core/widgets/app_bottom_nav.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/domain/usecases/sign_in.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/providers/auth_actions.dart';
 import 'features/dashboard/presentation/pages/officer_home_page.dart';
+import 'features/vehicles/domain/entities/active_vehicle.dart';
+import 'features/vehicles/presentation/pages/vehicles_page.dart';
 import 'screens/beranda_spv_screen.dart';
 import 'screens/checkin_screen.dart';
 import 'screens/checkout_screen.dart';
-import 'screens/kendaraan_screen.dart';
 import 'screens/riwayat_screen.dart';
 
 void main() {
@@ -155,27 +158,57 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
+  CheckOutScreen _checkOutScreen({ActiveVehicle? vehicle}) {
+    final identity = _identity;
+    return CheckOutScreen(
+      officerName: identity?.name ?? '',
+      officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
+      isSupervisor: identity?.isSupervisor ?? false,
+      parkingLot: vehicle?.areaName.isNotEmpty == true
+          ? vehicle!.areaName
+          : (identity?.areaLabel ?? ''),
+      nim: vehicle?.nim ?? '',
+      checkInPlate: vehicle?.plateIn ?? '',
+      checkInTime:
+          vehicle == null ? '' : Formatters.time(vehicle.checkedInAt),
+    );
+  }
+
+  void _openCheckOutFor(ActiveVehicle vehicle) =>
+      _push(_checkOutScreen(vehicle: vehicle));
+
   @override
   Widget build(BuildContext context) {
     final identity = ref.watch(officerIdentityProvider);
 
-    if (_index == 1) {
-      return KendaraanScreen(
-        officerName: identity?.name ?? '',
-        officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
-        isSupervisor: identity?.isSupervisor ?? false,
-        parkingLot: identity?.areaLabel ?? '',
-      );
-    }
-    if (_index == 2) {
-      return RiwayatScreen(
-        officerName: identity?.name ?? '',
-        officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
-        isSupervisor: identity?.isSupervisor ?? false,
-        parkingLot: identity?.areaLabel ?? '',
-      );
-    }
+    final Widget page = switch (_index) {
+      1 => VehiclesPage(
+          fallbackArea: identity?.areaLabel ?? '',
+          onCheckOut: _openCheckOutFor,
+          onScanCheckOut: () => _push(_checkOutScreen()),
+        ),
+      2 => RiwayatScreen(
+          officerName: identity?.name ?? '',
+          officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
+          isSupervisor: identity?.isSupervisor ?? false,
+          parkingLot: identity?.areaLabel ?? '',
+        ),
+      _ => _homePage(identity),
+    };
 
+    return Column(
+      children: [
+        Expanded(child: page),
+        AppBottomNav(
+          currentIndex: _index,
+          destinations: AppBottomNav.officerDestinations,
+          onTap: (index) => setState(() => _index = index),
+        ),
+      ],
+    );
+  }
+
+  Widget _homePage(OfficerIdentity? identity) {
     return OfficerHomePage(
       onOpenCheckIn: () => _push(
         CheckInScreen(
@@ -185,14 +218,7 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
           parkingLot: identity?.areaLabel ?? '',
         ),
       ),
-      onOpenCheckOut: () => _push(
-        CheckOutScreen(
-          officerName: identity?.name ?? '',
-          officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
-          isSupervisor: identity?.isSupervisor ?? false,
-          parkingLot: identity?.areaLabel ?? '',
-        ),
-      ),
+      onOpenCheckOut: () => _push(_checkOutScreen()),
       onOpenVehicles: () => setState(() => _index = 1),
       onOpenHistory: () => setState(() => _index = 2),
       onLogout: _logout,

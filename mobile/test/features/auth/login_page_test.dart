@@ -8,6 +8,7 @@ import 'package:mobile/core/di/providers.dart';
 import 'package:mobile/core/network/api_client.dart';
 import 'package:mobile/features/auth/domain/usecases/sign_in.dart';
 import 'package:mobile/features/auth/presentation/pages/login_page.dart';
+import 'package:mobile/features/auth/presentation/providers/login_controller.dart';
 
 import '../../helpers/fixtures.dart';
 
@@ -208,6 +209,57 @@ void main() {
     expect(find.text('Kata sandi salah.'), findsOneWidget);
     expect(signedIn, isNull);
     expect(container.read(sessionStoreProvider).shiftToken, isNull);
+  });
+
+  testWidgets('pilihan basi habis logout tidak merusak dropdown area',
+      (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    // Simulasi reload opsi setelah logout: id sama, instance JSON baru.
+    var areasPayload = [
+      areaJson(code: 'POS-UTAMA', name: 'Pos Parkir Utama'),
+    ];
+    final container = makeContainer(
+      MockClient((request) async => switch (request.url.path) {
+            '/api/officers' => jsonResponse([officerJson()]),
+            '/api/areas' => jsonResponse(areasPayload),
+            _ => notFound(),
+          }),
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: LoginPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('POS-UTAMA • Pos Parkir Utama'), findsOneWidget);
+
+    areasPayload = [
+      areaJson(code: 'POS-UTAMA', name: 'Pos Parkir Utama'),
+    ];
+    await container.read(loginControllerProvider.notifier).loadOptions();
+    await tester.pumpAndSettle();
+
+    // Tidak meledak, dan pilihan menunjuk instance dari list baru.
+    final state = container.read(loginControllerProvider);
+    expect(state.selectedArea, isNotNull);
+    expect(identical(state.selectedArea, state.areas.first), isTrue);
+    expect(find.text('POS-UTAMA • Pos Parkir Utama'), findsOneWidget);
+
+    // Lahan lama hilang dari backend: fallback ke entri pertama.
+    areasPayload = [
+      areaJson(id: 2, code: 'POS-TIMUR', name: 'Pos Parkir Timur'),
+    ];
+    await container.read(loginControllerProvider.notifier).loadOptions();
+    await tester.pumpAndSettle();
+
+    final fallback = container.read(loginControllerProvider);
+    expect(fallback.selectedArea?.code, 'POS-TIMUR');
+    expect(find.text('POS-TIMUR • Pos Parkir Timur'), findsOneWidget);
   });
 
 }

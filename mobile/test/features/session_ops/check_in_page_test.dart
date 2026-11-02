@@ -26,14 +26,17 @@ void main() {
         child: const MaterialApp(home: CheckInPage()),
       ),
     );
-    await tester.pumpAndSettle();
+    // Animasi laser berulang membuat pumpAndSettle tidak pernah selesai.
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   Future<void> reachConfirmStep(WidgetTester tester) async {
+    await tester.ensureVisible(find.text('Lanjut Scan Plat'));
     await tester.tap(find.text('Lanjut Scan Plat'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.ensureVisible(find.text('Gunakan Plat Ini'));
     await tester.tap(find.text('Gunakan Plat Ini'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   testWidgets('check-in mengirim nim dan plat lalu memakai data backend',
@@ -53,7 +56,7 @@ void main() {
 
     await reachConfirmStep(tester);
     await tester.tap(find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(fields?['nim'], isNotNull);
     expect(fields?['plate'], isNotNull);
@@ -72,10 +75,10 @@ void main() {
 
     await reachConfirmStep(tester);
     await tester.tap(find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Check-In Berhasil!'), findsNothing);
-    expect(find.textContaining('Tidak bisa menghubungi server'), findsOneWidget);
+    expect(find.textContaining('Tidak bisa menghubungi server'), findsWidgets);
   });
 
   testWidgets('plat yang sudah aktif (409) memakai pesan backend',
@@ -99,7 +102,7 @@ void main() {
 
     await reachConfirmStep(tester);
     await tester.tap(find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Check-In Berhasil!'), findsNothing);
     expect(find.text('Plat ini sudah punya sesi aktif.'), findsWidgets);

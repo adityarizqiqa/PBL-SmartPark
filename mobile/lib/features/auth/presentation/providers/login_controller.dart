@@ -84,12 +84,36 @@ class LoginController extends Notifier<LoginState> {
     state = state.copyWith(isLoadingOptions: true, clearOptionsError: true);
     try {
       final options = await ref.read(loadLoginOptionsProvider)();
+      // Pilihan lama bisa basi (mis. habis logout): cocokkan ulang lewat id
+      // dan pakai instance baru, karena Area/Officer membandingkan identitas.
+      // Tanpa ini DropdownButtonFormField menerima initialValue yang tidak
+      // ada di items lalu meledak saat rebuild.
+      Officer? officer;
+      final oldOfficer = state.selectedOfficer;
+      if (oldOfficer != null) {
+        for (final candidate in options.officers) {
+          if (candidate.id == oldOfficer.id) {
+            officer = candidate;
+            break;
+          }
+        }
+      }
+      Area? area;
+      final oldArea = state.selectedArea;
+      if (oldArea != null) {
+        for (final candidate in options.areas) {
+          if (candidate.id == oldArea.id) {
+            area = candidate;
+            break;
+          }
+        }
+      }
       state = state.copyWith(
         options: options,
-        selectedOfficer: state.selectedOfficer ??
-            (options.officers.isEmpty ? null : options.officers.first),
-        selectedArea: state.selectedArea ??
-            (options.areas.isEmpty ? null : options.areas.first),
+        selectedOfficer:
+            officer ?? (options.officers.isEmpty ? null : options.officers.first),
+        selectedArea:
+            area ?? (options.areas.isEmpty ? null : options.areas.first),
         isLoadingOptions: false,
       );
     } on Failure catch (failure) {

@@ -7,7 +7,7 @@ import 'package:mobile/api/api_client.dart';
 import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
-import 'package:mobile/screens/kendaraan_screen.dart';
+import 'package:mobile/features/vehicles/presentation/pages/vehicles_page.dart';
 import 'package:mobile/screens/riwayat_screen.dart';
 
 http.Client _createTestHttpClient() {
@@ -243,7 +243,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify that KendaraanScreen is displayed
-      expect(find.byType(KendaraanScreen), findsOneWidget);
+      expect(find.byType(VehiclesPage), findsOneWidget);
       expect(find.text('Kendaraan Sedang\nParkir'), findsOneWidget);
       expect(find.text('Cari NIM atau Plat Nomor...'), findsOneWidget);
       expect(find.text('Scan Check-Out'), findsOneWidget);

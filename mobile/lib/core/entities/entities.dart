@@ -1,5 +1,4 @@
 // Titik impor tunggal untuk entity yang dipakai lintas fitur.
-export 'active_session.dart';
 export 'api_error_body.dart';
 export 'area.dart';
 export 'assignment.dart';

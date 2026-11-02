@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../api/api_client.dart';
-import '../api/api_exception.dart';
-import '../core/theme/app_colors.dart';
-import '../models/session.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/entities/parking_session.dart';
+import '../../../../core/failures/failure.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../providers/session_providers.dart';
 
 /// Screen for Check-In Vehicle Flow (Steps 1, 1-alt, 2, 3)
 /// Mapped from Figma prototypes:
@@ -11,34 +13,31 @@ import '../models/session.dart';
 /// - 09-checkin-verifikasi-mahasiswa.html (Step 1 Alternate: Input NIM Manual)
 /// - 08-checkin-scan-plat.html (Step 2: Scan Plat Kendaraan)
 /// - 10-checkin-konfirmasi-sukses.html (Step 3: Konfirmasi & Sukses Masuk)
-class CheckInScreen extends StatefulWidget {
+class CheckInPage extends ConsumerStatefulWidget {
   final String officerName;
   final String officerRole;
   final bool isSupervisor;
   final String parkingLot;
   final int initialStep; // 1: Scan KTM, 2: Scan Plat, 3: Konfirmasi
-  final ApiClient? apiClient;
 
-  const CheckInScreen({
+  const CheckInPage({
     super.key,
     this.officerName = 'Budi Santoso',
     this.officerRole = 'Petugas Gerbang',
     this.isSupervisor = false,
     this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
     this.initialStep = 1,
-    this.apiClient,
   });
 
   @override
-  State<CheckInScreen> createState() => _CheckInScreenState();
+  ConsumerState<CheckInPage> createState() => _CheckInPageState();
 }
 
-class _CheckInScreenState extends State<CheckInScreen>
+class _CheckInPageState extends ConsumerState<CheckInPage>
     with SingleTickerProviderStateMixin {
   // Navigation & Step state
   late int _currentStep; // 1: Scan KTM, 10: Manual NIM, 2: Scan Plat, 3: Konfirmasi
   int _selectedNavIndex = 0;
-  late final ApiClient _apiClient;
 
   // Form & Detection Data
   String _nim = '244107020204';
@@ -61,7 +60,6 @@ class _CheckInScreenState extends State<CheckInScreen>
   @override
   void initState() {
     super.initState();
-    _apiClient = widget.apiClient ?? ApiClient();
     _currentStep = widget.initialStep;
     _nimController = TextEditingController(text: _nim);
     _plateController = TextEditingController(text: _plateNumber);
@@ -300,20 +298,12 @@ class _CheckInScreenState extends State<CheckInScreen>
       final cleanNim = _nim.trim();
       final cleanPlate = _plateNumber.trim().toUpperCase();
 
-      final res = await _apiClient.postMultipart(
-        '/api/sessions/check-in',
-        fields: {
-          'nim': cleanNim,
-          'plate': cleanPlate,
-        },
-      );
+      final session = await ref.read(sessionRepositoryProvider).checkIn(
+            nim: cleanNim,
+            plate: cleanPlate,
+          );
 
       if (!mounted) return;
-
-      SessionDetail? session;
-      if (res is Map<String, dynamic>) {
-        session = SessionDetail.fromJson(res);
-      }
 
       setState(() {
         _createdSession = session;
@@ -321,51 +311,13 @@ class _CheckInScreenState extends State<CheckInScreen>
       });
 
       _finishCheckInSuccess(session);
-    } on ApiException catch (e) {
+    } on Failure catch (failure) {
       if (!mounted) return;
-      if (e.isNetwork) {
-        final fallbackSession = SessionDetail(
-          id: 89,
-          nim: _nim,
-          plateIn: _plateNumber,
-          plateOut: null,
-          checkedInAt: DateTime.now(),
-          checkedOutAt: null,
-          status: 'active',
-          matchMethod: 'plate_exact',
-          verificationNote: null,
-          plateInPhotoPath: null,
-          plateOutPhotoPath: null,
-          areaId: 1,
-          areaName: _posFullName,
-          checkedInBy: const SessionOfficer(
-            assignmentId: 1,
-            officerId: 1,
-            officerName: 'Budi Santoso',
-          ),
-          checkedOutBy: null,
-          events: const [],
-        );
-        setState(() {
-          _createdSession = fallbackSession;
-          _isSubmitting = false;
-        });
-        _finishCheckInSuccess(fallbackSession);
-        return;
-      }
       setState(() {
         _isSubmitting = false;
-        if (e.statusCode == 409 || e.code == 'duplicate_active_session') {
-          _errorMessage = e.message.isNotEmpty
-              ? e.message
-              : 'NIM atau plat ini sudah punya sesi aktif.';
-        } else if (e.statusCode == 422) {
-          _errorMessage = e.message.isNotEmpty
-              ? e.message
-              : 'Validasi NIM atau plat tidak berhasil.';
-        } else {
-          _errorMessage = e.message;
-        }
+        _errorMessage = failure.message.isNotEmpty
+            ? failure.message
+            : 'Check-in gagal. Coba lagi.';
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -387,36 +339,6 @@ class _CheckInScreenState extends State<CheckInScreen>
           duration: const Duration(seconds: 4),
         ),
       );
-    } catch (e) {
-      if (!mounted) return;
-      // Fallback offline / demo mode bila backend belum dapat dijangkau
-      final fallbackSession = SessionDetail(
-        id: 89,
-        nim: _nim,
-        plateIn: _plateNumber,
-        plateOut: null,
-        checkedInAt: DateTime.now(),
-        checkedOutAt: null,
-        status: 'active',
-        matchMethod: 'plate_exact',
-        verificationNote: null,
-        plateInPhotoPath: null,
-        plateOutPhotoPath: null,
-        areaId: 1,
-        areaName: _posFullName,
-        checkedInBy: const SessionOfficer(
-          assignmentId: 1,
-          officerId: 1,
-          officerName: 'Budi Santoso',
-        ),
-        checkedOutBy: null,
-        events: const [],
-      );
-      setState(() {
-        _createdSession = fallbackSession;
-        _isSubmitting = false;
-      });
-      _finishCheckInSuccess(fallbackSession);
     }
   }
 
@@ -691,10 +613,10 @@ class _CheckInScreenState extends State<CheckInScreen>
   Future<void> _submitVoid(int sessionId, String note) async {
     setState(() => _isSubmitting = true);
     try {
-      await _apiClient.post(
-        '/api/sessions/$sessionId/void',
-        body: {'note': note},
-      );
+      await ref.read(sessionRepositoryProvider).voidSession(
+            sessionId,
+            note: note,
+          );
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
@@ -707,15 +629,15 @@ class _CheckInScreenState extends State<CheckInScreen>
           content: Text('Sesi #$sessionId berhasil dibatalkan (void).'),
         ),
       );
-    } on ApiException catch (e) {
+    } on Failure catch (failure) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(backgroundColor: AppColors.spDanger, content: Text(e.message)),
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
       );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
     }
   }
 

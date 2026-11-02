@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:mobile/api/api_client.dart';
 import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
@@ -103,18 +102,72 @@ http.Client _createTestHttpClient() {
         headers: {'content-type': 'application/json'},
       );
     }
-    return http.Response('Not Found', 404);
-  });
-}
-
-void main() {
-  setUp(() {
-    SessionStore.instance.clear();
-    ApiClient.defaultClient = MockClient((request) async {
-      final path = request.url.path;
-      if (path == '/api/sessions/check-in') {
-        return http.Response(
-          jsonEncode({
+    final path = request.url.path;
+    if (path == '/api/sessions/check-in') {
+      return http.Response(
+        jsonEncode({
+          'id': 89,
+          'nim': '244107020204',
+          'plate_in': 'N 1234 ABC',
+          'plate_out': null,
+          'checked_in_at': '2026-10-12T07:32:00.000Z',
+          'checked_out_at': null,
+          'status': 'active',
+          'match_method': 'plate_exact',
+          'verification_note': null,
+          'plate_in_photo_path': null,
+          'plate_out_photo_path': null,
+          'area_id': 1,
+          'area_name': 'POS-UTAMA • Pos Parkir Utama',
+          'checked_in_by': {
+            'assignment_id': 1,
+            'officer_id': 1,
+            'officer_name': 'Budi Santoso',
+          },
+          'checked_out_by': null,
+          'events': [],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path.startsWith('/api/sessions/') && path.endsWith('/check-out')) {
+      return http.Response(
+        jsonEncode({
+          'id': 89,
+          'nim': '244107020204',
+          'plate_in': 'N 1234 ABC',
+          'plate_out': 'N 1234 ABC',
+          'checked_in_at': '2026-10-12T07:32:00.000Z',
+          'checked_out_at': '2026-10-12T11:00:00.000Z',
+          'status': 'matched',
+          'match_method': 'plate_exact',
+          'verification_note': null,
+          'plate_in_photo_path': null,
+          'plate_out_photo_path': null,
+          'area_id': 1,
+          'area_name': 'POS-UTAMA • Pos Parkir Utama',
+          'checked_in_by': {
+            'assignment_id': 1,
+            'officer_id': 1,
+            'officer_name': 'Budi Santoso',
+          },
+          'checked_out_by': {
+            'assignment_id': 1,
+            'officer_id': 1,
+            'officer_name': 'Budi Santoso',
+          },
+          'events': [],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path == '/api/sessions/lookup') {
+      return http.Response(
+        jsonEncode({
+          'match_method': 'plate_exact',
+          'session': {
             'id': 89,
             'nim': '244107020204',
             'plate_in': 'N 1234 ABC',
@@ -135,86 +188,24 @@ void main() {
             },
             'checked_out_by': null,
             'events': [],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }
-      if (path.startsWith('/api/sessions/') && path.endsWith('/check-out')) {
-        return http.Response(
-          jsonEncode({
-            'id': 89,
-            'nim': '244107020204',
-            'plate_in': 'N 1234 ABC',
-            'plate_out': 'N 1234 ABC',
-            'checked_in_at': '2026-10-12T07:32:00.000Z',
-            'checked_out_at': '2026-10-12T11:00:00.000Z',
-            'status': 'matched',
-            'match_method': 'plate_exact',
-            'verification_note': null,
-            'plate_in_photo_path': null,
-            'plate_out_photo_path': null,
-            'area_id': 1,
-            'area_name': 'POS-UTAMA • Pos Parkir Utama',
-            'checked_in_by': {
-              'assignment_id': 1,
-              'officer_id': 1,
-              'officer_name': 'Budi Santoso',
-            },
-            'checked_out_by': {
-              'assignment_id': 1,
-              'officer_id': 1,
-              'officer_name': 'Budi Santoso',
-            },
-            'events': [],
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }
-      if (path == '/api/sessions/lookup') {
-        return http.Response(
-          jsonEncode({
-            'match_method': 'plate_exact',
-            'session': {
-              'id': 89,
-              'nim': '244107020204',
-              'plate_in': 'N 1234 ABC',
-              'plate_out': null,
-              'checked_in_at': '2026-10-12T07:32:00.000Z',
-              'checked_out_at': null,
-              'status': 'active',
-              'match_method': 'plate_exact',
-              'verification_note': null,
-              'plate_in_photo_path': null,
-              'plate_out_photo_path': null,
-              'area_id': 1,
-              'area_name': 'POS-UTAMA • Pos Parkir Utama',
-              'checked_in_by': {
-                'assignment_id': 1,
-                'officer_id': 1,
-                'officer_name': 'Budi Santoso',
-              },
-              'checked_out_by': null,
-              'events': [],
-            },
-            'candidates': [],
-            'message': null,
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }
-      return http.Response(
-        '{}',
+          },
+          'candidates': [],
+          'message': null,
+        }),
         200,
         headers: {'content-type': 'application/json'},
       );
-    });
+    }
+    return http.Response('Not Found', 404);
+  });
+}
+
+void main() {
+  setUp(() {
+    SessionStore.instance.clear();
   });
 
   tearDown(() {
-    ApiClient.defaultClient = null;
     SessionStore.instance.clear();
   });
 

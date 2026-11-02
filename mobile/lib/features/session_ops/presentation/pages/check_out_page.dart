@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
-import '../api/api_client.dart';
-import '../api/api_exception.dart';
-import '../api/session_store.dart';
-import '../core/theme/app_colors.dart';
-import '../models/session.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/entities/lookup_result.dart';
+import '../../../../core/entities/parking_session.dart';
+import '../../../../core/failures/failure.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/di/providers.dart';
+import '../providers/session_providers.dart';
 
 /// Screen for Check-Out Flow & Vehicle Verification
 /// Mapped from Figma prototypes:
 /// - 06-checkout-verifikasi-kendaraan.html (Check-Out: Verifikasi Kendaraan & KTM)
 /// - 13-verifikasi-manual-petugas.html (Verifikasi Manual Petugas)
-class CheckOutScreen extends StatefulWidget {
+class CheckOutPage extends ConsumerStatefulWidget {
   final String officerName;
   final String officerRole;
   final bool isSupervisor;
@@ -17,10 +20,9 @@ class CheckOutScreen extends StatefulWidget {
   final String nim;
   final String checkInPlate;
   final String checkInTime;
-  final ApiClient? apiClient;
   final SessionDetail? initialSession;
 
-  const CheckOutScreen({
+  const CheckOutPage({
     super.key,
     this.officerName = 'Budi Santoso',
     this.officerRole = 'Petugas Gerbang',
@@ -29,17 +31,15 @@ class CheckOutScreen extends StatefulWidget {
     this.nim = '244107020204',
     this.checkInPlate = 'N 1234 ABC',
     this.checkInTime = '07:32 WIB',
-    this.apiClient,
     this.initialSession,
   });
 
   @override
-  State<CheckOutScreen> createState() => _CheckOutScreenState();
+  ConsumerState<CheckOutPage> createState() => _CheckOutPageState();
 }
 
-class _CheckOutScreenState extends State<CheckOutScreen> {
+class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   int _selectedNavIndex = 0;
-  late final ApiClient _apiClient;
 
   // Sesi & hasil pencarian aktif
   SessionDetail? _session;
@@ -63,7 +63,6 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
   @override
   void initState() {
     super.initState();
-    _apiClient = widget.apiClient ?? ApiClient();
     _outPlateController = TextEditingController(text: widget.checkInPlate);
     _nimFallbackController = TextEditingController(text: widget.nim);
 
@@ -97,7 +96,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
       _matchMethod = 'plate_exact';
 
       // Bila ada token sesi shift aktif, lakukan lookup otomatis ke backend
-      if (SessionStore.instance.shiftToken != null) {
+      if (ref.read(sessionStoreProvider).shiftToken != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _performLookup(widget.checkInPlate, nim: widget.nim);
         });
@@ -182,10 +181,11 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
         query['nim'] = nim.trim();
       }
 
-      final res = await _apiClient.get('/api/sessions/lookup', query: query);
+      final result = await ref.read(sessionRepositoryProvider).lookup(
+            plate: cleanPlate,
+            nim: nim,
+          );
       if (!mounted) return;
-
-      final result = LookupResult.fromJson(res as Map<String, dynamic>);
       setState(() {
         _isSearching = false;
         _matchMethod = result.matchMethod;
@@ -204,21 +204,18 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
           _lookupMessage = result.message ?? 'Sesi tidak ditemukan.';
         }
       });
-    } on ApiException catch (e) {
+    } on Failure catch (failure) {
       if (!mounted) return;
       setState(() {
         _isSearching = false;
-        _lookupMessage = e.message;
+        _lookupMessage = failure.message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(backgroundColor: AppColors.spDanger, content: Text(e.message)),
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
       );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isSearching = false;
-        _lookupMessage = 'Gagal mencari sesi: $e';
-      });
     }
   }
 
@@ -228,10 +225,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     });
 
     try {
-      final res = await _apiClient.get('/api/sessions/${candidate.sessionId}');
+      final detail =
+          await ref.read(sessionRepositoryProvider).session(candidate.sessionId);
       if (!mounted) return;
-
-      final detail = SessionDetail.fromJson(res as Map<String, dynamic>);
       setState(() {
         _session = detail;
         _matchMethod = 'plate_similar';
@@ -239,11 +235,14 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
         _isSearching = false;
         _showManualForm = true;
       });
-    } on ApiException catch (e) {
+    } on Failure catch (failure) {
       if (!mounted) return;
       setState(() => _isSearching = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(backgroundColor: AppColors.spDanger, content: Text(e.message)),
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -280,51 +279,34 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
     });
 
     try {
-      final status = isMatched ? 'matched' : 'manual_verified';
-      final fields = <String, String?>{
-        'plate': _currentCheckOutPlate,
-        'status': status,
-        if (!isMatched) 'note': note,
-        'match_method': _matchMethod ?? (isMatched ? 'plate_exact' : 'plate_similar'),
-      };
-
-      final res = await _apiClient.postMultipart(
-        '/api/sessions/${_session!.id}/check-out',
-        fields: fields,
-      );
+      final closedSession = await ref.read(sessionRepositoryProvider).checkOut(
+            id: _session!.id,
+            plate: _currentCheckOutPlate,
+            status: isMatched ? 'matched' : 'manual_verified',
+            note: isMatched ? null : note,
+            matchMethod:
+                _matchMethod ?? (isMatched ? 'plate_exact' : 'plate_similar'),
+          );
 
       if (!mounted) return;
 
-      SessionDetail? closedSession;
-      if (res is Map<String, dynamic>) {
-        closedSession = SessionDetail.fromJson(res);
-      }
-
       setState(() {
-        if (closedSession != null) _session = closedSession;
+        _session = closedSession;
         _isSubmitting = false;
       });
 
       _showSuccessDialog(closedSession);
-    } on ApiException catch (e) {
+    } on Failure catch (failure) {
       if (!mounted) return;
-      if (e.isNetwork) {
-        setState(() => _isSubmitting = false);
-        _showSuccessDialog(_session);
-        return;
-      }
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.spDanger,
-          content: Text(e.message.isNotEmpty ? e.message : 'Gagal check-out.'),
+          content: Text(
+            failure.message.isNotEmpty ? failure.message : 'Gagal check-out.',
+          ),
         ),
       );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
-      // Fallback offline / demo mode bila backend belum dapat dijangkau
-      _showSuccessDialog(_session);
     }
   }
 
@@ -600,10 +582,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
   Future<void> _submitReject(String note) async {
     setState(() => _isSubmitting = true);
     try {
-      await _apiClient.post(
-        '/api/sessions/${_session!.id}/reject',
-        body: {'note': note},
-      );
+      await ref
+          .read(sessionRepositoryProvider)
+          .reject(_session!.id, note: note);
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -612,15 +593,15 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
           content: Text('Check-out sesi #${_session!.id} berhasil ditolak. Sesi tetap aktif.'),
         ),
       );
-    } on ApiException catch (e) {
+    } on Failure catch (failure) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(backgroundColor: AppColors.spDanger, content: Text(e.message)),
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
       );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
     }
   }
 
@@ -714,10 +695,9 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
   Future<void> _submitVoid(String note) async {
     setState(() => _isSubmitting = true);
     try {
-      await _apiClient.post(
-        '/api/sessions/${_session!.id}/void',
-        body: {'note': note},
-      );
+      await ref
+          .read(sessionRepositoryProvider)
+          .voidSession(_session!.id, note: note);
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
@@ -729,15 +709,15 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
           content: Text('Sesi check-in berhasil dibatalkan (voided).'),
         ),
       );
-    } on ApiException catch (e) {
+    } on Failure catch (failure) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(backgroundColor: AppColors.spDanger, content: Text(e.message)),
+        SnackBar(
+          backgroundColor: AppColors.spDanger,
+          content: Text(failure.message),
+        ),
       );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
     }
   }
 

@@ -230,13 +230,21 @@ extension _CheckOutVerification on _CheckOutPageState {
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              Image.asset(
-                                'assets/foto-plat-checkin.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) => const Center(
-                                  child: Icon(Icons.photo_camera, color: Colors.white24, size: 28),
+                              if (_inPhotoBytes != null)
+                                Image.memory(
+                                  _inPhotoBytes!,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                  errorBuilder: (ctx, err, stack) => const Center(
+                                    child: Icon(Icons.photo_camera,
+                                        color: Colors.white24, size:28),
+                                  ),
+                                )
+                              else
+                                const Center(
+                                  child: Icon(Icons.photo_camera_outlined,
+                                      color: Colors.white24, size: 28),
                                 ),
-                              ),
                               Positioned(
                                 left: 6,
                                 bottom: 6,
@@ -345,43 +353,69 @@ extension _CheckOutVerification on _CheckOutPageState {
                         const SizedBox(height: 6),
 
                         // Egress Photo Preview
-                        Container(
-                          height: 96,
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF213145),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.asset(
-                                'assets/foto-plat-checkout.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) => const Center(
-                                  child: Icon(Icons.photo_camera, color: Colors.white24, size: 28),
-                                ),
-                              ),
-                              Positioned(
-                                left: 6,
-                                bottom: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xD9213145),
-                                    borderRadius: BorderRadius.circular(4),
+                        InkWell(
+                          onTap: _captureOutPhoto,
+                          child: Container(
+                            height: 96,
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF213145),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (_outPhotoPath != null)
+                                  Image.file(
+                                    File(_outPhotoPath!),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, err, stack) =>
+                                        const Center(
+                                      child: Icon(Icons.photo_camera,
+                                          color: Colors.white24, size: 28),
+                                    ),
+                                  )
+                                else
+                                  Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.photo_camera_outlined,
+                                            color: Colors.white38, size: 28),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Ketuk untuk foto plat',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: Colors.white
+                                                .withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  child: const Text(
-                                    'Foto Saat Keluar',
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                Positioned(
+                                  left: 6,
+                                  bottom: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xD9213145),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'Foto Saat Keluar',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
 

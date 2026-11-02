@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../../core/entities/lookup_result.dart';
 import '../../../../core/entities/parking_session.dart';
 
@@ -13,6 +15,11 @@ abstract class SessionRepository {
 
   /// `GET /api/sessions/lookup` — plat persis, plat mirip, lalu NIM.
   Future<LookupResult> lookup({required String plate, String? nim});
+
+  /// `GET /api/sessions/{id}/photo/{side}` — snapshot plat tersimpan.
+  ///
+  /// Mengembalikan `null` bila foto tidak tersedia (belum diambil).
+  Future<Uint8List?> sessionPhoto(int id, String side);
 
   /// `GET /api/sessions/{id}`.
   Future<SessionDetail> session(int id);

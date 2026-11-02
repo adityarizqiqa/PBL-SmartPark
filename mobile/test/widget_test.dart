@@ -8,7 +8,7 @@ import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
 import 'package:mobile/features/vehicles/presentation/pages/vehicles_page.dart';
-import 'package:mobile/screens/riwayat_screen.dart';
+import 'package:mobile/features/history/presentation/pages/history_page_view.dart';
 
 http.Client _createTestHttpClient() {
   return MockClient((request) async {
@@ -253,7 +253,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify that RiwayatScreen is displayed
-      expect(find.byType(RiwayatScreen), findsOneWidget);
+      expect(find.byType(HistoryPageView), findsOneWidget);
       expect(find.text('Riwayat Sesi Parkir'), findsOneWidget);
       expect(find.text('RIWAYAT SESI'), findsOneWidget);
       expect(find.text('852'), findsOneWidget);

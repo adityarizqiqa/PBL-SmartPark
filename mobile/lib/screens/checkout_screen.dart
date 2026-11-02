@@ -4,7 +4,6 @@ import '../api/api_exception.dart';
 import '../api/session_store.dart';
 import '../core/theme/app_colors.dart';
 import '../models/session.dart';
-import 'riwayat_screen.dart';
 
 /// Screen for Check-Out Flow & Vehicle Verification
 /// Mapped from Figma prototypes:
@@ -2160,16 +2159,7 @@ class _CheckOutScreenState extends State<CheckOutScreen> {
           } else if (index == 1) {
             Navigator.of(context).popUntil((route) => route.isFirst);
           } else if (index == 2) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => RiwayatScreen(
-                  officerName: widget.officerName,
-                  officerRole: widget.officerRole,
-                  isSupervisor: widget.isSupervisor,
-                  parkingLot: widget.parkingLot,
-                ),
-              ),
-            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
           } else {
             setState(() {
               _selectedNavIndex = index;

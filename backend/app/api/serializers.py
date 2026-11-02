@@ -13,14 +13,6 @@ from app.schemas.session import (
     SessionEventOut,
 )
 
-EVENT_LABELS = {
-    "check_in": "Check-in",
-    "check_out_closed": "Sesi ditutup",
-    "check_out_rejected": "Check-out ditolak",
-    "manual_verification": "Verifikasi manual",
-    "check_in_voided": "Check-in dibatalkan",
-}
-
 
 def active_session(row: ParkingSession, duration_minutes: int) -> ActiveSessionOut:
     return ActiveSessionOut(

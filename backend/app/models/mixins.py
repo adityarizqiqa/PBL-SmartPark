@@ -7,14 +7,7 @@ import datetime as dt
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-
-def utcnow() -> dt.datetime:
-    """Waktu sekarang dalam UTC, tanpa informasi zona.
-
-    Seluruh kolom waktu menyimpan UTC naif agar konsisten dan bisa langsung
-    dibandingkan. Konversi ke zona laporan dilakukan saat membaca.
-    """
-    return dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+from app.clock import utcnow
 
 
 class TimestampMixin:

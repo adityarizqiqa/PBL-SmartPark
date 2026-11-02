@@ -20,7 +20,6 @@ from app.models.mixins import TimestampMixin
 ROLE_OFFICER = "officer"
 #: Pengawas lapangan — boleh mengelola lahan dan mengatur shift jaga.
 ROLE_SPV = "spv"
-ROLES = (ROLE_OFFICER, ROLE_SPV)
 
 
 class Officer(TimestampMixin, Base):

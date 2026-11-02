@@ -9,13 +9,12 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends, Header
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.errors import AssignmentNotFound, AuthError, NotSpv
 from app.models import Officer, OfficerSession, ShiftOfficer
-from app.security import hash_token
+from app.services.auth import AuthService
 from app.services.session import SessionService
 from app.services.shift import ShiftService
 
@@ -71,12 +70,7 @@ def require_session(
             details={"header": "X-Officer-Token"},
         )
 
-    session = db.scalar(
-        select(OfficerSession).where(
-            OfficerSession.token_hash == hash_token(x_officer_token),
-            OfficerSession.revoked_at.is_(None),
-        )
-    )
+    session = AuthService(db).resolve_token(x_officer_token)
     if session is None or session.officer is None or not session.officer.is_active:
         raise AuthError("Sesi petugas tidak berlaku. Silakan masuk ulang.")
     return session

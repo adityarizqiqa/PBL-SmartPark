@@ -2,7 +2,7 @@
 
 from app.schemas.area import AreaOut
 from app.schemas.auth import SessionOut, SignInForm, SignInOut
-from app.schemas.common import ErrorOut, PageMeta
+from app.schemas.common import PageMeta
 from app.schemas.officer import OfficerCreate, OfficerOut, OfficerUpdate
 from app.schemas.session import (
     ActiveSessionOut,
@@ -27,7 +27,6 @@ from app.schemas.shift import (
 
 __all__ = [
     "AreaOut",
-    "ErrorOut",
     "PageMeta",
     "SessionOut",
     "SignInForm",

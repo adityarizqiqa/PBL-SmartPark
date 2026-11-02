@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../core/entities/parking_session.dart';
 import '../../../../core/failures/failure.dart';
@@ -18,7 +19,6 @@ part 'check_in_step_ktm.dart';
 part 'check_in_step_manual_nim.dart';
 part 'check_in_step_plate.dart';
 part 'check_in_step_confirm.dart';
-part 'qr_pattern_painter.dart';
 
 class CheckInPage extends ConsumerStatefulWidget {
   final String officerName;
@@ -49,6 +49,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   // Form & Detection Data
   String _nim = '244107020204';
   String _plateNumber = 'N 1234 ABC';
+  String? _platePhotoPath;
   SessionDetail? _createdSession;
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -59,6 +60,10 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   late TextEditingController _nimController;
   late TextEditingController _plateController;
   final TextEditingController _voidReasonController = TextEditingController();
+  // Live QR scanner embedded in Step 1 viewfinder (no separate route).
+  late final MobileScannerController _qrController;
+  DateTime? _lastQrAt;
+  String _lastQrCode = '';
 
   // Laser animation for camera viewfinder
   late AnimationController _animController;
@@ -70,6 +75,11 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     _currentStep = widget.initialStep;
     _nimController = TextEditingController(text: _nim);
     _plateController = TextEditingController(text: _plateNumber);
+    _qrController = MobileScannerController(
+      autoStart: true,
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+    );
 
     _animController = AnimationController(
       vsync: this,
@@ -84,6 +94,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   @override
   void dispose() {
     _animController.dispose();
+    _qrController.dispose();
     _nimController.dispose();
     _plateController.dispose();
     _voidReasonController.dispose();
@@ -295,6 +306,60 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     );
   }
 
+  /// Pindah step check-in (cabang ini belum mengelola kamera plat).
+  void _setStep(int s) {
+    setState(() => _currentStep = s);
+  }
+
+  /// Callback live scanner inline: isi NIM otomatis saat QR terbaca.
+  /// Throttle 5 detik + abaikan kode sama agar tidak spam snackbar.
+  void _onQrDetect(BarcodeCapture capture) {
+    if (!mounted || _currentStep != 1) return;
+    String? code;
+    for (final barcode in capture.barcodes) {
+      final value = barcode.rawValue;
+      if (value != null && value.trim().isNotEmpty) {
+        code = value.trim();
+        break;
+      }
+    }
+    if (code == null) return;
+    final now = DateTime.now();
+    if (code == _lastQrCode &&
+        _lastQrAt != null &&
+        now.difference(_lastQrAt!).inSeconds < 5) {
+      return;
+    }
+    _lastQrCode = code;
+    _lastQrAt = now;
+    setState(() {
+      _nim = code!;
+      _nimController.text = code;
+    });
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('NIM terisi dari QR: $code')));
+  }
+
+  /// Nyalakan ulang pemindaian setelah kode sama ingin dibaca lagi.
+  void _rescanQrNim() {
+    _lastQrCode = '';
+    _lastQrAt = null;
+    _qrController.start();
+  }
+
+  Future<void> _toggleQrTorch() async {
+    try {
+      await _qrController.toggleTorch();
+    } catch (_) {
+      return; // Perangkat tanpa flash / web: abaikan.
+    }
+    if (!mounted) return;
+    setState(() {
+      _flashlightOn = !_flashlightOn;
+    });
+  }
+
   Future<void> _submitCheckIn() async {
     setState(() {
       _isSubmitting = true;
@@ -308,6 +373,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       final session = await ref.read(sessionRepositoryProvider).checkIn(
             nim: cleanNim,
             plate: cleanPlate,
+            photoPath: _platePhotoPath,
           );
 
       if (!mounted) return;
@@ -464,10 +530,10 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
                     onPressed: () {
                       Navigator.of(ctx).pop();
                       setState(() {
-                        _currentStep = 1;
                         _createdSession = null;
                         _errorMessage = null;
                       });
+                      _setStep(1);
                     },
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppColors.spBorder),
@@ -628,8 +694,8 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       setState(() {
         _isSubmitting = false;
         _createdSession = null;
-        _currentStep = 1;
       });
+      _setStep(1);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.spSuccess,

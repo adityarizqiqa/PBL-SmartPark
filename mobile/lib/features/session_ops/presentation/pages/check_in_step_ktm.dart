@@ -160,6 +160,23 @@ extension _CheckInStepKtm on _CheckInPageState {
             ),
             child: Stack(
               children: [
+                // Live camera feed: QR terbaca otomatis via _onQrDetect.
+                Positioned.fill(
+                  child: MobileScanner(
+                    controller: _qrController,
+                    onDetect: _onQrDetect,
+                    errorBuilder: (context, error) => Container(
+                      color: const Color(0xFF0C1622),
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: const Text(
+                        'Kamera tidak tersedia di perangkat ini.\nKetik NIM secara manual.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ),
                 // Radial glow in background
                 Positioned.fill(
                   child: Container(
@@ -176,7 +193,7 @@ extension _CheckInStepKtm on _CheckInPageState {
                   ),
                 ),
 
-                // Central Reticle Box & KTM Mockup
+                // Central Reticle Box (live camera feed di belakang)
                 Center(
                   child: SizedBox(
                     width: 240,
@@ -297,125 +314,6 @@ extension _CheckInStepKtm on _CheckInPageState {
                           },
                         ),
 
-                        // Simulated KTM Card Graphic inside Focus
-                        Container(
-                          width: 190,
-                          height: 190,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.spTint2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.35),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Card header
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 6,
-                                          height: 6,
-                                          decoration: const BoxDecoration(
-                                            color: AppColors.spPrimary,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Flexible(
-                                          child: Text(
-                                            'KTM KAMPUS',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.spPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.spTint2,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'MHS',
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.spInk2,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              // Realistic QR Graphic Container
-                              Container(
-                                width: 110,
-                                height: 110,
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.spBorder),
-                                ),
-                                child: CustomPaint(
-                                  painter: _QrPatternPainter(),
-                                ),
-                              ),
-
-                              // Card footer
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: const [
-                                  Flexible(
-                                    child: Text(
-                                      'BARCODE #2024',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.spInk3,
-                                      ),
-                                    ),
-                                  ),
-                                  Flexible(
-                                    child: Text(
-                                      'SMARTPARK',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.spPrimary600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -447,9 +345,9 @@ extension _CheckInStepKtm on _CheckInPageState {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Text(
-                              'QR Code Terdeteksi',
-                              style: TextStyle(
+                            Text(
+                              _lastQrCode.isEmpty ? 'Mencari QR Code…' : 'QR Code Terdeteksi',
+                              style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
@@ -461,11 +359,7 @@ extension _CheckInStepKtm on _CheckInPageState {
                       Row(
                         children: [
                           InkWell(
-                            onTap: () {
-                              rebuild(() {
-                                _flashlightOn = !_flashlightOn;
-                              });
-                            },
+                            onTap: _toggleQrTorch,
                             borderRadius: BorderRadius.circular(20),
                             child: Container(
                               height: 36,
@@ -896,11 +790,7 @@ extension _CheckInStepKtm on _CheckInPageState {
 
           // Action Buttons
           ElevatedButton(
-            onPressed: () {
-              rebuild(() {
-                _currentStep = 2; // Move to Step 2: Scan Plat
-              });
-            },
+            onPressed: () => _setStep(2), // Move to Step 2: Scan Plat
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spPrimary,
               foregroundColor: Colors.white,
@@ -932,14 +822,7 @@ extension _CheckInStepKtm on _CheckInPageState {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Memulai ulang pemindaian KTM...'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  },
+                  onPressed: _rescanQrNim,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.spTint2,
                     foregroundColor: AppColors.spPrimary,
@@ -952,7 +835,7 @@ extension _CheckInStepKtm on _CheckInPageState {
                   ),
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text(
-                    'Scan Ulang KTM',
+                    'Pindai Ulang',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -960,11 +843,7 @@ extension _CheckInStepKtm on _CheckInPageState {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    rebuild(() {
-                      _currentStep = 10; // Switch to Manual NIM input
-                    });
-                  },
+                  onPressed: () => _setStep(10), // Switch to Manual NIM input
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.spTint3,
                     foregroundColor: AppColors.spInk,

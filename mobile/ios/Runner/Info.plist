@@ -24,6 +24,12 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Akses kamera diperlukan untuk memotret plat kendaraan saat check-in dan check-out.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Akses galeri diperlukan bila foto plat diambil dari galeri.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Akses mikrofon tidak dipakai oleh SmartPark.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

@@ -438,11 +438,7 @@ extension _CheckInStepConfirm on _CheckInPageState {
                 const SizedBox(height: 10),
 
                 OutlinedButton.icon(
-                  onPressed: () {
-                    rebuild(() {
-                      _currentStep = 2; // Back to plate scan / edit
-                    });
-                  },
+                  onPressed: () => _setStep(2), // Back to plate scan / edit
                   style: OutlinedButton.styleFrom(
                     backgroundColor: AppColors.spTint1,
                     foregroundColor: AppColors.spPrimary,

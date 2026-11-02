@@ -339,8 +339,8 @@ extension _CheckInStepManualNim on _CheckInPageState {
                 ? () {
                     rebuild(() {
                       _nim = _nimController.text.trim();
-                      _currentStep = 2; // Move to Step 2
                     });
+                    _setStep(2); // Move to Step 2
                   }
                 : null,
             style: ElevatedButton.styleFrom(
@@ -363,11 +363,7 @@ extension _CheckInStepManualNim on _CheckInPageState {
           const SizedBox(height: 10),
 
           OutlinedButton(
-            onPressed: () {
-              rebuild(() {
-                _currentStep = 1; // Back to Step 1 camera
-              });
-            },
+            onPressed: () => _setStep(1), // Back to Step 1 camera
             style: OutlinedButton.styleFrom(
               backgroundColor: AppColors.spSurface,
               foregroundColor: AppColors.spPrimary,

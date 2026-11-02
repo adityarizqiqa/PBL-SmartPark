@@ -32,11 +32,11 @@ extension _CheckInChrome on _CheckInPageState {
                   InkWell(
                     onTap: () {
                       if (_currentStep == 3) {
-                        rebuild(() => _currentStep = 2);
+                        _setStep(2);
                       } else if (_currentStep == 2) {
-                        rebuild(() => _currentStep = 1);
+                        _setStep(1);
                       } else if (_currentStep == 10) {
-                        rebuild(() => _currentStep = 1);
+                        _setStep(1);
                       } else {
                         Navigator.of(context).pop();
                       }

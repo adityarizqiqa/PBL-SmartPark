@@ -22,7 +22,11 @@ class StatusPill extends StatelessWidget {
   final bool dense;
 
   /// Memetakan status sesi dari backend ke label dan warna.
-  factory StatusPill.forSessionStatus(String status, {Key? key}) {
+  factory StatusPill.forSessionStatus(
+    String status, {
+    Key? key,
+    bool dense = false,
+  }) {
     final (label, tone, icon) = switch (status) {
       'matched' => ('Sesuai', PillTone.success, Icons.check_circle_rounded),
       'manual_verified' => (
@@ -35,7 +39,13 @@ class StatusPill extends StatelessWidget {
       'rejected' => ('Ditolak', PillTone.danger, Icons.block_rounded),
       _ => (status, PillTone.neutral, Icons.info_outline_rounded),
     };
-    return StatusPill(key: key, label: label, tone: tone, icon: icon);
+    return StatusPill(
+      key: key,
+      label: label,
+      tone: tone,
+      icon: icon,
+      dense: dense,
+    );
   }
 
   @override

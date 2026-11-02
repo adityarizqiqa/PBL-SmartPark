@@ -8,7 +8,7 @@ import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
 import 'package:mobile/features/vehicles/presentation/pages/vehicles_page.dart';
-import 'package:mobile/screens/riwayat_screen.dart';
+import 'package:mobile/features/history/presentation/pages/history_page_view.dart';
 
 http.Client _createTestHttpClient() {
   return MockClient((request) async {
@@ -65,6 +65,29 @@ http.Client _createTestHttpClient() {
             'assignments': [],
           },
         }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    } else if (request.url.path == '/api/sessions/history') {
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 31,
+            'nim': '244107020204',
+            'plate_in': 'N 1234 ABC',
+            'plate_out': 'N 1234 ABC',
+            'checked_in_at': '2026-10-12T07:30:00',
+            'checked_out_at': '2026-10-12T10:54:00',
+            'status': 'matched',
+            'verification_note': null,
+          },
+        ]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    } else if (request.url.path == '/api/sessions/history/meta') {
+      return http.Response(
+        jsonEncode({'total': 45, 'limit': 20, 'offset': 0}),
         200,
         headers: {'content-type': 'application/json'},
       );
@@ -253,11 +276,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify that RiwayatScreen is displayed
-      expect(find.byType(RiwayatScreen), findsOneWidget);
+      expect(find.byType(HistoryPageView), findsOneWidget);
       expect(find.text('Riwayat Sesi Parkir'), findsOneWidget);
       expect(find.text('RIWAYAT SESI'), findsOneWidget);
-      expect(find.text('852'), findsOneWidget);
-      expect(find.text('835'), findsOneWidget);
+      // Ringkasan memakai data nyata dari /history/meta dan baris yang dimuat.
+      expect(find.text('45'), findsOneWidget);
+      expect(find.text('1-20 dari 45'), findsOneWidget);
     },
   );
 

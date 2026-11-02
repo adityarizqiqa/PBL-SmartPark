@@ -13,12 +13,12 @@ import 'features/auth/domain/usecases/sign_in.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/providers/auth_actions.dart';
 import 'features/dashboard/presentation/pages/officer_home_page.dart';
+import 'features/history/presentation/pages/history_page_view.dart';
 import 'features/vehicles/domain/entities/active_vehicle.dart';
 import 'features/vehicles/presentation/pages/vehicles_page.dart';
 import 'screens/beranda_spv_screen.dart';
 import 'screens/checkin_screen.dart';
 import 'screens/checkout_screen.dart';
-import 'screens/riwayat_screen.dart';
 
 void main() {
   runApp(const SmartParkApp());
@@ -187,12 +187,7 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
           onCheckOut: _openCheckOutFor,
           onScanCheckOut: () => _push(_checkOutScreen()),
         ),
-      2 => RiwayatScreen(
-          officerName: identity?.name ?? '',
-          officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
-          isSupervisor: identity?.isSupervisor ?? false,
-          parkingLot: identity?.areaLabel ?? '',
-        ),
+      2 => HistoryPageView(areaLabel: identity?.areaLabel ?? ''),
       _ => _homePage(identity),
     };
 

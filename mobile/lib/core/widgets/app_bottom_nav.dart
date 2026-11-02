@@ -58,8 +58,8 @@ class AppBottomNav extends StatelessWidget {
     ),
     NavDestination(
       label: 'Lahan',
-      icon: Icons.local_parking_outlined,
-      activeIcon: Icons.local_parking_rounded,
+      icon: Icons.map_outlined,
+      activeIcon: Icons.map_rounded,
     ),
     NavDestination(
       label: 'Shift',
@@ -68,8 +68,8 @@ class AppBottomNav extends StatelessWidget {
     ),
     NavDestination(
       label: 'Petugas',
-      icon: Icons.badge_outlined,
-      activeIcon: Icons.badge_rounded,
+      icon: Icons.groups_outlined,
+      activeIcon: Icons.groups_rounded,
     ),
     NavDestination(
       label: 'Keluar',

@@ -53,4 +53,6 @@ class QueryKeys {
   static const String limit = 'limit';
   static const String offset = 'offset';
   static const String q = 'q';
+  static const String includeInactive = 'include_inactive';
+  static const String openOnly = 'open_only';
 }

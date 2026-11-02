@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:mobile/api/session_store.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/features/dashboard/presentation/pages/officer_home_page.dart';
 import 'package:mobile/features/vehicles/presentation/pages/vehicles_page.dart';
@@ -201,14 +200,6 @@ http.Client _createTestHttpClient() {
 }
 
 void main() {
-  setUp(() {
-    SessionStore.instance.clear();
-  });
-
-  tearDown(() {
-    SessionStore.instance.clear();
-  });
-
   testWidgets(
     'Full flow test: Login -> Beranda -> Kendaraan -> Riwayat Screen',
     (WidgetTester tester) async {

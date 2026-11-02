@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
-import 'api/session_store.dart' as legacy;
 import 'core/di/providers.dart';
 import 'core/network/api_client.dart';
 import 'core/session/officer_identity.dart';
@@ -16,7 +15,10 @@ import 'features/dashboard/presentation/pages/officer_home_page.dart';
 import 'features/history/presentation/pages/history_page_view.dart';
 import 'features/vehicles/domain/entities/active_vehicle.dart';
 import 'features/vehicles/presentation/pages/vehicles_page.dart';
-import 'screens/beranda_spv_screen.dart';
+import 'features/supervisor/areas/presentation/pages/areas_page.dart';
+import 'features/supervisor/home/presentation/pages/supervisor_home_page.dart';
+import 'features/supervisor/officers/presentation/pages/officers_page.dart';
+import 'features/supervisor/shifts/presentation/pages/shifts_page.dart';
 import 'features/session_ops/presentation/pages/check_in_page.dart';
 import 'features/session_ops/presentation/pages/check_out_page.dart';
 
@@ -62,37 +64,89 @@ class _EntryPoint extends ConsumerWidget {
   void _openHome(BuildContext context, WidgetRef ref, SignInResult result) {
     final navigator = Navigator.of(context);
     switch (result) {
-      case SupervisorSignedIn(:final session):
-        legacy.SessionStore.instance.setOfficerSession(
-          token: session.token,
-          id: session.officer.id,
-          name: session.officer.name,
-          userRole: session.officer.role,
-        );
+      case SupervisorSignedIn():
         navigator.pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => BerandaSpvScreen(
-              officerName: session.officer.name,
-              officerRole: 'Pengawas (SPV)',
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => const SupervisorShell()),
         );
-      case OfficerJoinedShift(:final login, :final officer):
-        legacy.SessionStore.instance
-          ..shiftToken = login.token
-          ..assignmentId = login.assignment.id
-          ..shiftId = login.shift.id
-          ..officerId = login.assignment.officerId
-          ..officerName = login.assignment.officerName
-          ..areaId = login.shift.parkingAreaId
-          ..areaName = login.shift.areaName
-          ..role = officer.role;
+      case OfficerJoinedShift():
         navigator.pushReplacement(
           MaterialPageRoute(
             builder: (_) => const OfficerShell(),
           ),
         );
     }
+  }
+}
+
+/// Kerangka navigasi pengawas: beranda, lahan, shift, petugas.
+class SupervisorShell extends ConsumerStatefulWidget {
+  const SupervisorShell({super.key});
+
+  @override
+  ConsumerState<SupervisorShell> createState() => _SupervisorShellState();
+}
+
+class _SupervisorShellState extends ConsumerState<SupervisorShell> {
+  int _index = 0;
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari Konsol Pengawas?'),
+        content: const Text('Anda akan kembali ke halaman masuk.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await ref.read(signOutActionProvider)();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const _EntryPoint()),
+      (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final page = switch (_index) {
+      1 => const AreasPage(),
+      2 => const ShiftsPage(),
+      3 => const OfficersPage(),
+      _ => SupervisorHomePage(
+          onOpenAreas: () => setState(() => _index = 1),
+          onOpenShifts: () => setState(() => _index = 2),
+          onOpenOfficers: () => setState(() => _index = 3),
+          onLogout: _logout,
+        ),
+    };
+
+    return Column(
+      children: [
+        Expanded(child: page),
+        AppBottomNav(
+          currentIndex: _index,
+          destinations: AppBottomNav.supervisorDestinations,
+          onTap: (index) {
+            if (index == 4) {
+              _logout();
+              return;
+            }
+            setState(() => _index = index);
+          },
+        ),
+      ],
+    );
   }
 }
 

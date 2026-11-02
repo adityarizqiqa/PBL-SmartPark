@@ -6,7 +6,7 @@ import '../core/theme/app_colors.dart';
 import '../models/models.dart';
 import '../widgets/spv_app_bar.dart';
 import '../widgets/spv_bottom_nav.dart';
-import 'login_screen.dart';
+import '../features/auth/presentation/pages/login_page.dart';
 
 /// Kelola Petugas — Konsol Pengawas (SPV)
 /// Mapped from tmp/uiux/16-kelola-petugas.html
@@ -315,7 +315,7 @@ class _KelolaPetugasScreenState extends State<KelolaPetugasScreen> {
     SessionStore.instance.clear();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 

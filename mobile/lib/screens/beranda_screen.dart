@@ -4,7 +4,7 @@ import '../api/api_exception.dart';
 import '../api/session_store.dart';
 import '../core/theme/app_colors.dart';
 import '../models/models.dart';
-import 'login_screen.dart';
+import '../features/auth/presentation/pages/login_page.dart';
 import 'kendaraan_screen.dart';
 import 'riwayat_screen.dart';
 import 'checkin_screen.dart';
@@ -126,7 +126,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
           ),
         );
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          MaterialPageRoute(builder: (context) => const LoginPage()),
           (route) => false,
         );
         return;
@@ -204,7 +204,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 if (mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
-                      builder: (context) => LoginScreen(apiClient: _apiClient),
+                      builder: (context) => const LoginPage(),
                     ),
                     (route) => false,
                   );

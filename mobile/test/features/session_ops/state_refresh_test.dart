@@ -1,3 +1,4 @@
+import 'package:mobile/core/entities/parking_session.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -314,6 +315,28 @@ void main() {
           ],
           child: MaterialApp(
             home: CheckOutPage(
+              initialSession: SessionDetail(
+                id: 89,
+                nim: '244107020204',
+                plateIn: 'N 1234 ABC',
+                plateOut: null,
+                checkedInAt: DateTime.parse('2026-10-12T07:32:00.000Z'),
+                checkedOutAt: null,
+                status: 'active',
+                matchMethod: 'plate_exact',
+                verificationNote: null,
+                plateInPhotoPath: null,
+                plateOutPhotoPath: null,
+                areaId: 1,
+                areaName: 'POS-UTAMA • Pos Parkir Utama',
+                checkedInBy: const SessionOfficer(
+                  assignmentId: 1,
+                  officerId: 1,
+                  officerName: 'Budi Santoso',
+                ),
+                checkedOutBy: null,
+                events: const [],
+              ),
               onFinished: () => onFinishedCalled = true,
             ),
           ),

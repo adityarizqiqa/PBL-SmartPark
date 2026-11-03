@@ -76,43 +76,31 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   @override
   void initState() {
     super.initState();
-    _outPlateController = TextEditingController(text: widget.checkInPlate);
-    _nimFallbackController = TextEditingController(text: widget.nim);
+    _outPlateController = TextEditingController(
+      text: widget.initialSession?.plateIn ?? widget.checkInPlate,
+    );
+    _nimFallbackController = TextEditingController(
+      text: widget.initialSession?.nim ?? widget.nim,
+    );
 
     if (widget.initialSession != null) {
       _session = widget.initialSession;
       _matchMethod = _session!.matchMethod ?? 'plate_exact';
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadInPhoto());
     } else {
-      // Inisialisasi awal fallback agar layar langsung tampil siap uji/verifikasi
-      _session = SessionDetail(
-        id: 89,
-        nim: widget.nim,
-        plateIn: widget.checkInPlate,
-        plateOut: null,
-        checkedInAt: DateTime.now().subtract(const Duration(hours: 3, minutes: 24)),
-        checkedOutAt: null,
-        status: 'active',
-        matchMethod: 'plate_exact',
-        verificationNote: null,
-        plateInPhotoPath: null,
-        plateOutPhotoPath: null,
-        areaId: 1,
-        areaName: widget.parkingLot,
-        checkedInBy: const SessionOfficer(
-          assignmentId: 1,
-          officerId: 1,
-          officerName: 'Budi Santoso',
-        ),
-        checkedOutBy: null,
-        events: const [],
-      );
-      _matchMethod = 'plate_exact';
+      _session = null;
+      _matchMethod = null;
 
-      // Bila ada token sesi shift aktif, lakukan lookup otomatis ke backend
-      if (ref.read(sessionStoreProvider).shiftToken != null) {
+      // Hanya jalankan auto-lookup bila checkInPlate terisi dan ada token shift aktif.
+      // Skenario navigasi Beranda (checkInPlate kosong) tidak memicu request lookup ke API.
+      final plateToLookup = widget.checkInPlate.trim();
+      if (plateToLookup.isNotEmpty &&
+          ref.read(sessionStoreProvider).shiftToken != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _performLookup(widget.checkInPlate, nim: widget.nim);
+          _performLookup(
+            plateToLookup,
+            nim: widget.nim.trim().isNotEmpty ? widget.nim.trim() : null,
+          );
         });
       }
     }
@@ -129,15 +117,26 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
   String get _currentCheckOutPlate => _outPlateController.text.trim().toUpperCase();
 
-  String get _checkInPlate => _session?.plateIn ?? widget.checkInPlate;
+  String get _checkInPlate {
+    if (_session != null) return _session!.plateIn;
+    if (widget.checkInPlate.trim().isNotEmpty) return widget.checkInPlate.trim();
+    return '-';
+  }
 
-  String get _currentNim => _session?.nim ?? widget.nim;
+  String get _currentNim {
+    if (_session != null) return _session!.nim;
+    if (widget.nim.trim().isNotEmpty) return widget.nim.trim();
+    return '-';
+  }
 
   String get _checkInTime {
     if (_session != null) {
       return _formatTime(_session!.checkedInAt);
     }
-    return widget.checkInTime;
+    if (widget.checkInTime.trim().isNotEmpty) {
+      return widget.checkInTime.trim();
+    }
+    return '-';
   }
 
   String get _checkOutTime => _formatTime(DateTime.now());
@@ -150,7 +149,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   }
 
   String get _duration {
-    if (_session == null) return '0m';
+    if (_session == null) return '-';
     final diff = DateTime.now().difference(_session!.checkedInAt.toLocal());
     final totalMinutes = diff.inMinutes;
     if (totalMinutes <= 0) return '0m';
@@ -164,13 +163,14 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     if (_session != null) {
       return 'ID: PRK-${_session!.id.toString().padLeft(6, '0')}';
     }
-    return 'ID: PRK-240502-089';
+    return 'BELUM ADA SESI';
   }
 
   bool get _isPlateMatched {
     if (_session == null) return false;
     final inP = _session!.plateIn.replaceAll(' ', '').toUpperCase();
     final outP = _currentCheckOutPlate.replaceAll(' ', '').toUpperCase();
+    if (inP.isEmpty || outP.isEmpty) return false;
     return inP == outP;
   }
 
@@ -512,7 +512,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
                         const SizedBox(height: 14),
                         _buildActiveSessionMetadata(),
                         const SizedBox(height: 14),
-                        if (!_isPlateMatched || _showManualForm) ...[
+                        if (_session != null && (!_isPlateMatched || _showManualForm)) ...[
                           _buildManualVerificationSection(),
                           const SizedBox(height: 14),
                         ],

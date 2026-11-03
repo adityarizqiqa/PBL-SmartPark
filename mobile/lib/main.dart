@@ -240,6 +240,7 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
       checkInPlate: vehicle?.plateIn ?? '',
       checkInTime:
           vehicle == null ? '' : Formatters.time(vehicle.checkedInAt),
+      initialSession: vehicle?.toSessionDetail(),
       onFinished: () {
         if (mounted) resetSessionScopedState(ref);
       },

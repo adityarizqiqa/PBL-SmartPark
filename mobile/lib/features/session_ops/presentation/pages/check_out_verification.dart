@@ -2,6 +2,77 @@ part of 'check_out_page.dart';
 
 extension _CheckOutVerification on _CheckOutPageState {
     Widget _buildLiveStatusBanner() {
+      if (_session == null) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.spTint2,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.spTint3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.spPrimary600,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.spPrimary600.withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'SIAP SCAN / CARI KELUAR',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        color: AppColors.spInkStrong,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Masukkan plat nomor keluar pada kolom di atas atau scan barcode/KTM untuk memuat data sesi parkir.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: AppColors.spInk2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
       final isMatched = _isPlateMatched;
 
       return Container(
@@ -314,11 +385,11 @@ extension _CheckOutVerification on _CheckOutPageState {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _isPlateMatched ? AppColors.spTint1 : AppColors.spDangerBg.withValues(alpha: 0.3),
+                      color: (_session == null || _isPlateMatched) ? AppColors.spTint1 : AppColors.spDangerBg.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: _isPlateMatched ? AppColors.spTint3 : AppColors.spDanger.withValues(alpha: 0.5),
-                        width: _isPlateMatched ? 1 : 1.5,
+                        color: (_session == null || _isPlateMatched) ? AppColors.spTint3 : AppColors.spDanger.withValues(alpha: 0.5),
+                        width: (_session == null || _isPlateMatched) ? 1 : 1.5,
                       ),
                     ),
                     child: Column(
@@ -335,7 +406,7 @@ extension _CheckOutVerification on _CheckOutPageState {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
-                                  color: _isPlateMatched ? AppColors.spPrimary : AppColors.spDangerInk,
+                                  color: (_session == null || _isPlateMatched) ? AppColors.spPrimary : AppColors.spDangerInk,
                                 ),
                               ),
                             ),
@@ -440,7 +511,20 @@ extension _CheckOutVerification on _CheckOutPageState {
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              if (_isPlateMatched)
+                              if (_session == null)
+                                Text(
+                                  _currentCheckOutPlate.isNotEmpty
+                                      ? _currentCheckOutPlate
+                                      : '-',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.5,
+                                    color: Colors.white,
+                                    fontFamily: 'monospace',
+                                  ),
+                                )
+                              else if (_isPlateMatched)
                                 Text(
                                   _currentCheckOutPlate,
                                   style: const TextStyle(
@@ -549,10 +633,12 @@ extension _CheckOutVerification on _CheckOutPageState {
                 _buildMetaCell('DURASI', _duration, flexWidth: true, isBrand: true),
                 _buildMetaCell(
                   'STATUS',
-                  _isPlateMatched ? 'Sesuai' : 'Perlu Verifikasi',
+                  _session == null
+                      ? 'Menunggu Input'
+                      : (_isPlateMatched ? 'Sesuai' : 'Perlu Verifikasi'),
                   flexWidth: true,
-                  isBrand: _isPlateMatched,
-                  isDanger: !_isPlateMatched,
+                  isBrand: _session != null && _isPlateMatched,
+                  isDanger: _session != null && !_isPlateMatched,
                 ),
               ],
             ),
@@ -638,11 +724,13 @@ extension _CheckOutVerification on _CheckOutPageState {
         children: [
           // KTM Inspection Checkbox Card
           InkWell(
-            onTap: () {
-              rebuild(() {
-                _ktmChecked = !_ktmChecked;
-              });
-            },
+            onTap: _session == null
+                ? null
+                : () {
+                    rebuild(() {
+                      _ktmChecked = !_ktmChecked;
+                    });
+                  },
             borderRadius: BorderRadius.circular(14),
             child: Container(
               padding: const EdgeInsets.all(14),
@@ -663,11 +751,13 @@ extension _CheckOutVerification on _CheckOutPageState {
                 children: [
                   Checkbox(
                     value: _ktmChecked,
-                    onChanged: (val) {
-                      rebuild(() {
-                        _ktmChecked = val ?? false;
-                      });
-                    },
+                    onChanged: _session == null
+                        ? null
+                        : (val) {
+                            rebuild(() {
+                              _ktmChecked = val ?? false;
+                            });
+                          },
                     activeColor: AppColors.spPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
@@ -705,7 +795,7 @@ extension _CheckOutVerification on _CheckOutPageState {
 
           // Confirm Button
           ElevatedButton.icon(
-            onPressed: (_ktmChecked && _isPlateMatched && !_isSubmitting)
+            onPressed: (_session != null && _ktmChecked && _isPlateMatched && !_isSubmitting)
                 ? _handleConfirmCheckOut
                 : null,
             style: ElevatedButton.styleFrom(
@@ -713,7 +803,7 @@ extension _CheckOutVerification on _CheckOutPageState {
               foregroundColor: Colors.white,
               disabledBackgroundColor: AppColors.spPrimary.withValues(alpha: 0.35),
               disabledForegroundColor: Colors.white70,
-              elevation: (_ktmChecked && _isPlateMatched) ? 2 : 0,
+              elevation: (_session != null && _ktmChecked && _isPlateMatched) ? 2 : 0,
               minimumSize: const Size.fromHeight(56),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -741,7 +831,7 @@ extension _CheckOutVerification on _CheckOutPageState {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _isSubmitting ? null : _showRejectDialog,
+                  onPressed: (_session == null || _isSubmitting) ? null : _showRejectDialog,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.spDanger,
                     side: const BorderSide(color: AppColors.spDanger),
@@ -758,7 +848,7 @@ extension _CheckOutVerification on _CheckOutPageState {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _isSubmitting ? null : _showVoidDialog,
+                  onPressed: (_session == null || _isSubmitting) ? null : _showVoidDialog,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.spWarnInk,
                     side: const BorderSide(color: AppColors.spWarn),

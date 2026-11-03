@@ -89,6 +89,23 @@ http.Client _createTestHttpClient() {
         200,
         headers: {'content-type': 'application/json'},
       );
+    } else if (request.url.path == '/api/sessions/active') {
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 89,
+            'nim': '244107020204',
+            'plate_in': 'N 1234 ABC',
+            'checked_in_at': '2026-10-12T07:32:00',
+            'duration_minutes': 204,
+            'area_id': 1,
+            'area_name': 'POS-UTAMA • Pos Parkir Utama',
+            'checked_in_by': 'Budi Santoso',
+          },
+        ]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
     } else if (request.url.path == '/api/sessions/dashboard') {
       return http.Response(
         jsonEncode({
@@ -342,17 +359,27 @@ void main() {
     await tester.tap(find.text('Mulai Bertugas'));
     await tester.pumpAndSettle();
 
-    // Tap CHECK-OUT from Beranda
+    // Tap CHECK-OUT from Beranda (Skenario A: starts in standby mode)
     await tester.ensureVisible(find.text('CHECK-OUT'));
     await tester.tap(find.text('CHECK-OUT'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Verify CheckOut screen elements
+    // Verify CheckOut screen elements in standby mode
     expect(find.text('Verifikasi Check-Out'), findsWidgets);
     expect(find.text('POS KELUAR'), findsOneWidget);
-    expect(find.text('SESUAI'), findsOneWidget);
+    expect(find.text('SIAP SCAN / CARI KELUAR'), findsOneWidget);
     expect(find.text('PERBANDINGAN PLAT'), findsOneWidget);
+
+    // Cari plat nomor kendaraan via input scan / cari manual
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Plat Nomor Scan / Keluar'),
+      'N 1234 ABC',
+    );
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SESUAI'), findsOneWidget);
 
     // Toggle checkbox
     await tester.ensureVisible(find.text('KTM telah diperiksa secara visual'));
@@ -370,5 +397,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(OfficerHomePage), findsOneWidget);
+  });
+
+  testWidgets('Check-Out Flow test: Opened from Vehicles list (Skenario B)', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(SmartParkApp(httpClient: _createTestHttpClient()));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField), 'password123');
+    await tester.tap(find.text('Mulai Bertugas'));
+    await tester.pumpAndSettle();
+
+    ScaffoldMessenger.of(
+      tester.element(find.byType(OfficerHomePage)),
+    ).hideCurrentSnackBar();
+    await tester.pumpAndSettle();
+
+    // Pindah ke tab Kendaraan
+    await tester.tap(find.byIcon(Icons.directions_car_outlined));
+    await tester.pumpAndSettle();
+
+    // Tekan Check-Out pada kartu kendaraan pertama
+    expect(find.text('Check-Out'), findsWidgets);
+    await tester.tap(find.text('Check-Out').first);
+    await tester.pumpAndSettle();
+
+    // CheckOutPage langsung menampilkan data sesi awal (initialSession) berstatus SESUAI
+    expect(find.text('Verifikasi Check-Out'), findsWidgets);
+    expect(find.text('SESUAI'), findsOneWidget);
+    expect(find.text('N 1234 ABC'), findsWidgets);
+
+    // Centang KTM
+    await tester.ensureVisible(find.text('KTM telah diperiksa secara visual'));
+    await tester.tap(find.text('KTM telah diperiksa secara visual'));
+    await tester.pumpAndSettle();
+
+    // Konfirmasi Check-Out
+    await tester.ensureVisible(find.text('Konfirmasi Check-Out'));
+    await tester.tap(find.text('Konfirmasi Check-Out'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Check-Out Berhasil!'), findsOneWidget);
+    await tester.tap(find.text('Selesai & Ke Beranda'));
+    await tester.pumpAndSettle();
   });
 }

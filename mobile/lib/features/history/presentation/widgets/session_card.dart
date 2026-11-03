@@ -32,7 +32,7 @@ class SessionCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.spSurface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.spBorder),
         boxShadow: [
           BoxShadow(
@@ -63,7 +63,7 @@ class SessionCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isManual
                             ? AppColors.spWarnBg
-                            : const Color(0xFFF1F5F9),
+                            : AppColors.spNeutralBg,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -82,7 +82,7 @@ class SessionCard extends StatelessWidget {
               Text(
                 '#${item.id}',
                 style: const TextStyle(
-                  fontFamily: 'monospace',
+                  fontFamily: 'RobotoMono',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.spInk3,
@@ -99,9 +99,9 @@ class SessionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xCCE2E8F0)),
+              color: AppColors.spNeutralBg,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(color: AppColors.spBorder),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -127,10 +127,10 @@ class SessionCard extends StatelessWidget {
                 Text(
                   item.nim,
                   style: const TextStyle(
-                    fontFamily: 'monospace',
+                    fontFamily: 'RobotoMono',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
+                    color: AppColors.spNavy,
                   ),
                 ),
               ],
@@ -146,13 +146,13 @@ class SessionCard extends StatelessWidget {
           const SizedBox(height: 10),
           InkWell(
             onTap: onDetail,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.spInfoBg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFBFDBFE)),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.spInfoBorder),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -193,9 +193,9 @@ class _VerifiedPlate extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xCCF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xCCE2E8F0)),
+        color: AppColors.spNeutralBg,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.spBorder),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -209,7 +209,7 @@ class _VerifiedPlate extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.spInfoBg,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFDBEAFE)),
+                    border: Border.all(color: AppColors.spInfoBorder),
                   ),
                   child: const Icon(
                     Icons.directions_car_rounded,
@@ -247,7 +247,7 @@ class _VerifiedPlate extends StatelessWidget {
                 ? Icons.warning_amber_rounded
                 : Icons.check_circle_rounded,
             size: 20,
-            color: isManual ? const Color(0xFFD97706) : AppColors.spSuccess,
+            color: isManual ? AppColors.spWarn : AppColors.spSuccess,
           ),
         ],
       ),
@@ -265,9 +265,9 @@ class _ComparePlates extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0x99FFF1F2),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFECDD3)),
+        color: AppColors.spDangerBg,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.spInfoBorder),
       ),
       child: Column(
         children: [
@@ -295,7 +295,7 @@ class _ComparePlates extends StatelessWidget {
               PlateChip(plate: item.plateIn, dense: true),
             ],
           ),
-          const Divider(height: 12, color: Color(0xCCFECDD3)),
+          const Divider(height: 12, color: AppColors.spInfoBorder),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -304,7 +304,7 @@ class _ComparePlates extends StatelessWidget {
                   Icon(
                     Icons.compare_arrows_rounded,
                     size: 14,
-                    color: Color(0xFFE11D48),
+                    color: AppColors.spDanger,
                   ),
                   SizedBox(width: 4),
                   Text(
@@ -312,7 +312,7 @@ class _ComparePlates extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFBE123C),
+                      color: AppColors.spDangerInk,
                     ),
                   ),
                 ],
@@ -343,11 +343,11 @@ class _NoteBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isManual
-            ? const Color(0xCCFFFBEB)
-            : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(8),
+            ? AppColors.spWarnBg
+            : AppColors.spNeutralBg,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-          color: isManual ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+          color: isManual ? AppColors.spWarnInk : AppColors.spSlate,
         ),
       ),
       child: Row(
@@ -355,7 +355,7 @@ class _NoteBanner extends StatelessWidget {
           Icon(
             isManual ? Icons.info_outline : Icons.note_outlined,
             size: 14,
-            color: isManual ? const Color(0xFF78350F) : AppColors.spSlate,
+            color: isManual ? AppColors.spWarnInk : AppColors.spSlate,
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -364,7 +364,7 @@ class _NoteBanner extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: isManual ? const Color(0xFF78350F) : AppColors.spSlate,
+                color: isManual ? AppColors.spWarnInk : AppColors.spSlate,
               ),
             ),
           ),
@@ -386,8 +386,8 @@ class _TimePanel extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.spInfoBg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFDBEAFE)),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.spInfoBorder),
       ),
       child: Row(
         children: [
@@ -397,7 +397,7 @@ class _TimePanel extends StatelessWidget {
               value: Formatters.time(item.checkedInAt),
             ),
           ),
-          Container(width: 1, height: 26, color: const Color(0xFFBFDBFE)),
+          Container(width: 1, height: 26, color: AppColors.spInfoBorder),
           Expanded(
             child: _TimeCell(
               label: 'KELUAR',
@@ -406,7 +406,7 @@ class _TimePanel extends StatelessWidget {
                   : Formatters.time(item.checkedOutAt!),
             ),
           ),
-          Container(width: 1, height: 26, color: const Color(0xFFBFDBFE)),
+          Container(width: 1, height: 26, color: AppColors.spInfoBorder),
           Expanded(
             child: _TimeCell(
               label: 'DURASI PARKIR',
@@ -443,7 +443,7 @@ class _TimeCell extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: 'RobotoMono',
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: color ?? AppColors.spNavy,
@@ -475,13 +475,13 @@ class PlateChip extends StatelessWidget {
         vertical: dense ? 2 : 3,
       ),
       decoration: BoxDecoration(
-        color: danger ? const Color(0xFFE11D48) : AppColors.spNavy,
+        color: danger ? AppColors.spDanger : AppColors.spNavy,
         borderRadius: BorderRadius.circular(dense ? 4 : 6),
       ),
       child: Text(
         plate,
         style: TextStyle(
-          fontFamily: 'monospace',
+          fontFamily: 'RobotoMono',
           fontSize: dense ? 11 : 13,
           fontWeight: FontWeight.w700,
           color: Colors.white,
@@ -544,7 +544,7 @@ class PaginationBar extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.spTint2,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Text(
                   '$pageNumber / $pageCount',

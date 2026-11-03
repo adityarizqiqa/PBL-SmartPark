@@ -31,8 +31,20 @@ void main() {
   }
 
   Future<void> reachConfirmStep(WidgetTester tester) async {
-    await tester.ensureVisible(find.text('Lanjut Scan Plat'));
-    await tester.tap(find.text('Lanjut Scan Plat'));
+    await tester.ensureVisible(find.text('Ketik NIM Manual'));
+    await tester.tap(find.text('Ketik NIM Manual'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.byType(TextField).first, '244107020204');
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.ensureVisible(find.text('LANJUT SCAN PLAT KENDARAAN'));
+    await tester.tap(find.text('LANJUT SCAN PLAT KENDARAAN'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.ensureVisible(find.text('Koreksi Manual'));
+    await tester.tap(find.text('Koreksi Manual'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.byType(TextField).last, 'N1234ABC');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Simpan'));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.ensureVisible(find.text('Gunakan Plat Ini'));
     await tester.tap(find.text('Gunakan Plat Ini'));

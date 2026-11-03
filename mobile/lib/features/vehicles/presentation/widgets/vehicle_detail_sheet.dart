@@ -79,7 +79,7 @@ class VehicleDetailSheet extends StatelessWidget {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: AppColors.spTint3,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: const Icon(
                           Icons.directions_car_rounded,
@@ -108,8 +108,8 @@ class VehicleDetailSheet extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD1FAE5),
-                    borderRadius: BorderRadius.circular(16),
+                    color: AppColors.spSuccessBg,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -203,7 +203,7 @@ class VehicleDetailSheet extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       side: const BorderSide(color: AppColors.spBorder),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                     ),
                     child: const Text(
@@ -217,18 +217,12 @@ class VehicleDetailSheet extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: onCheckOut,
                     icon: const Icon(Icons.logout_rounded, size: 18),
                     label: const Text('Check-Out'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.spPrimary,
-                      foregroundColor: Colors.white,
+                    style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
                     ),
                   ),
                 ),

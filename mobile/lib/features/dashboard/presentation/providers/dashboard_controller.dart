@@ -53,8 +53,10 @@ class DashboardController extends Notifier<DashboardState> {
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
       final summary = await ref.read(getHomeSummaryProvider)();
+      if (!ref.mounted) return;
       state = DashboardState(summary: summary);
     } on Failure catch (failure) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, failure: failure);
     }
   }

@@ -28,8 +28,8 @@ class HistoryBanner extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.spInfoBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.spInfoBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +50,7 @@ class HistoryBanner extends StatelessWidget {
                 width: 4,
                 height: 4,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF2563EB),
+                  color: AppColors.spInfoDot,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -66,14 +66,19 @@ class HistoryBanner extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Riwayat Sesi Parkir',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-              color: AppColors.spNavy,
-            ),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  color: AppColors.spNavy,
+                ) ??
+                const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  color: AppColors.spNavy,
+                ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -91,7 +96,7 @@ class HistoryBanner extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.spSurface,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               border: Border.all(color: AppColors.spBorder),
             ),
             child: Row(
@@ -100,7 +105,7 @@ class HistoryBanner extends StatelessWidget {
                   child: _SummaryBox(
                     label: 'TOTAL',
                     value: '$total',
-                    background: const Color(0xFFF8FAFC),
+                    background: AppColors.spNeutralBg,
                     valueColor: AppColors.spPrimary,
                     labelColor: AppColors.spInk3,
                   ),
@@ -110,7 +115,7 @@ class HistoryBanner extends StatelessWidget {
                   child: _SummaryBox(
                     label: 'SESUAI',
                     value: '$matched',
-                    background: const Color(0x66ECFDF5),
+                    background: AppColors.spSuccessBg,
                     valueColor: AppColors.spSuccessInk,
                     labelColor: AppColors.spSuccessInk,
                   ),
@@ -120,7 +125,7 @@ class HistoryBanner extends StatelessWidget {
                   child: _SummaryBox(
                     label: 'MANUAL',
                     value: '$manual',
-                    background: const Color(0x66FFFBEB),
+                    background: AppColors.spWarnBg,
                     valueColor: AppColors.spWarn,
                     labelColor: AppColors.spWarn,
                   ),
@@ -130,9 +135,9 @@ class HistoryBanner extends StatelessWidget {
                   child: _SummaryBox(
                     label: 'AKTIF',
                     value: '$active',
-                    background: const Color(0x66FFF1F2),
-                    valueColor: const Color(0xFFBE123C),
-                    labelColor: const Color(0xFF9F1239),
+                    background: AppColors.spDangerBg,
+                    valueColor: AppColors.spDangerInk,
+                    labelColor: AppColors.spDangerInk,
                   ),
                 ),
               ],
@@ -165,7 +170,7 @@ class _SummaryBox extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Column(
         children: [
@@ -339,11 +344,12 @@ class HistorySearchBar extends StatelessWidget {
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: 'Cari NIM atau Plat Nomor...',
-          hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+          hintStyle:
+              const TextStyle(fontSize: 13, color: AppColors.spInk4),
           prefixIcon: const Icon(
             Icons.search_rounded,
             size: 20,
-            color: Color(0xFF94A3B8),
+            color: AppColors.spInk4,
           ),
           suffixIcon: controller.text.isEmpty
               ? null

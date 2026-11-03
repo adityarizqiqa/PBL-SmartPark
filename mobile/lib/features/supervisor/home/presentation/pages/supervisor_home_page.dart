@@ -5,9 +5,8 @@ import '../../../../../core/entities/area.dart';
 import '../../../../../core/entities/shift.dart';
 import '../../../../../core/session/officer_identity.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/error_banner.dart';
 import '../../../../../core/widgets/spv_app_bar.dart';
-import '../../../../auth/presentation/pages/login_page.dart';
-import '../../../../auth/presentation/providers/auth_actions.dart';
 import '../providers/supervisor_home_controller.dart';
 
 /// Beranda Pengawas (SPV)
@@ -48,67 +47,6 @@ class _SupervisorHomePageState extends ConsumerState<SupervisorHomePage> {
   Future<void> _load() =>
       ref.read(supervisorHomeControllerProvider.notifier).refresh();
 
-  Future<void> _doLogout() async {
-    await ref.read(signOutActionProvider)();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
-  }
-
-  void _handleLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.spSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Keluar dari Konsol Pengawas?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.spInk,
-          ),
-        ),
-        content: const Text(
-          'Anda akan kembali ke halaman masuk.',
-          style: TextStyle(fontSize: 14, color: AppColors.spInk2, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Batal',
-              style: TextStyle(
-                color: AppColors.spInk3,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _doLogout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.spDanger,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Keluar',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,7 +59,7 @@ class _SupervisorHomePageState extends ConsumerState<SupervisorHomePage> {
               children: [
                 SpvAppBar(
                   pageTitle: 'Beranda Pengawas',
-                  onLogout: () => _handleLogout(context),
+                  onLogout: widget.onLogout,
                 ),
                 Expanded(
                   child: RefreshIndicator(
@@ -466,7 +404,7 @@ class _SupervisorHomePageState extends ConsumerState<SupervisorHomePage> {
           ),
         ),
         if (_error != null) ...[
-          _buildErrorBanner(_error!),
+          ErrorBanner(message: _error!, onRetry: _load),
           const SizedBox(height: 10),
         ],
         Row(
@@ -497,55 +435,6 @@ class _SupervisorHomePageState extends ConsumerState<SupervisorHomePage> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildErrorBanner(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.spDangerBg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            size: 18,
-            color: AppColors.spDanger,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.4,
-                color: AppColors.spDangerInk,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: _loading ? null : _load,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              minimumSize: const Size(0, 0),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text(
-              'Coba lagi',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.spDangerInk,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

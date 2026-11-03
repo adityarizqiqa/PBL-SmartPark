@@ -68,9 +68,11 @@ class AreasController extends Notifier<AreasState> {
       final areas = await ref.read(areaRepositoryProvider).fetchAreas(
             includeInactive: true,
           );
+      if (!ref.mounted) return;
       final shifts = await ref.read(shiftRepositoryProvider).fetchShifts(
             openOnly: true,
           );
+      if (!ref.mounted) return;
       final counts = <int, int>{};
       for (final shift in shifts) {
         counts[shift.parkingAreaId] = (counts[shift.parkingAreaId] ?? 0) + 1;
@@ -81,6 +83,7 @@ class AreasController extends Notifier<AreasState> {
         isLoading: false,
       );
     } on Failure catch (failure) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, failure: failure);
     }
   }
@@ -95,7 +98,7 @@ class AreasController extends Notifier<AreasState> {
     } on Failure catch (failure) {
       return failure.message;
     } finally {
-      state = state.copyWith(isSaving: false);
+      if (ref.mounted) state = state.copyWith(isSaving: false);
     }
   }
 
@@ -110,7 +113,7 @@ class AreasController extends Notifier<AreasState> {
     } on Failure catch (failure) {
       return failure.message;
     } finally {
-      state = state.copyWith(isSaving: false);
+      if (ref.mounted) state = state.copyWith(isSaving: false);
     }
   }
 
@@ -134,7 +137,7 @@ class AreasController extends Notifier<AreasState> {
     } on Failure catch (failure) {
       return failure.message;
     } finally {
-      state = state.copyWith(isSaving: false);
+      if (ref.mounted) state = state.copyWith(isSaving: false);
     }
   }
 }

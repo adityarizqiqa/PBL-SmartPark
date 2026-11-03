@@ -11,6 +11,11 @@ import '../../../../core/entities/parking_session.dart';
 import '../../../../core/failures/failure.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/session_providers.dart';
+import '../../../../core/session/officer_identity.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
+import '../../../../core/widgets/page_app_bar.dart';
 
 /// Screen for Check-In Vehicle Flow (Steps 1, 1-alt, 2, 3)
 /// Mapped from Figma prototypes:
@@ -29,7 +34,7 @@ class CheckInPage extends ConsumerStatefulWidget {
   final String officerRole;
   final bool isSupervisor;
   final String parkingLot;
-  final int initialStep; // 1: Scan KTM, 2: Scan Plat, 3: Konfirmasi
+  final CheckInStep initialStep;
 
   const CheckInPage({
     super.key,
@@ -37,30 +42,53 @@ class CheckInPage extends ConsumerStatefulWidget {
     this.officerRole = 'Petugas Gerbang',
     this.isSupervisor = false,
     this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
-    this.initialStep = 1,
+    this.initialStep = CheckInStep.ktm,
   });
 
   @override
   ConsumerState<CheckInPage> createState() => _CheckInPageState();
 }
 
+/// Urutan layar check-in: scan KTM → (opsional) NIM manual → plat → konfirmasi.
+enum CheckInStep { ktm, manualNim, plate, confirm }
+
+/// Kompatibilitas pemanggil lama yang memakai angka ajaib 1/10/2/3.
+extension CheckInStepCode on CheckInStep {
+  static CheckInStep fromCode(int code) {
+    switch (code) {
+      case 10:
+        return CheckInStep.manualNim;
+      case 2:
+        return CheckInStep.plate;
+      case 3:
+        return CheckInStep.confirm;
+      case 1:
+      default:
+        return CheckInStep.ktm;
+    }
+  }
+
+  static CheckInStep? tryParse(Object? value) {
+    if (value is CheckInStep) return value;
+    if (value is int) return CheckInStepCode.fromCode(value);
+    return null;
+  }
+}
 class _CheckInPageState extends ConsumerState<CheckInPage>
     with SingleTickerProviderStateMixin {
-  // Navigation & Step state
-  late int _currentStep; // 1: Scan KTM, 10: Manual NIM, 2: Scan Plat, 3: Konfirmasi
-  int _selectedNavIndex = 0;
+  late CheckInStep _currentStep;
+  bool _cameFromManual = false;
+  late String _clockNow;
 
-  // Form & Detection Data
-  String _nim = '244107020204';
-  String _plateNumber = 'N 1234 ABC';
+  String _nim = '';
+  String _plateNumber = '';
   String? _platePhotoPath;
   SessionDetail? _createdSession;
   bool _isSubmitting = false;
   String? _errorMessage;
-
   // Interactive controls
   bool _flashlightOn = false;
-  bool _manualKtmVerified = true;
+  bool _manualKtmVerified = false;
   late TextEditingController _nimController;
   late TextEditingController _plateController;
   final TextEditingController _voidReasonController = TextEditingController();
@@ -82,9 +110,11 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   @override
   void initState() {
     super.initState();
-    _currentStep = widget.initialStep;
-    _nimController = TextEditingController(text: _nim);
-    _plateController = TextEditingController(text: _plateNumber);
+    _currentStep = CheckInStepCode.tryParse(widget.initialStep) ?? CheckInStep.ktm;
+    _cameFromManual = _currentStep == CheckInStep.manualNim;
+    _clockNow = Formatters.time(DateTime.now());
+    _nimController = TextEditingController();
+    _plateController = TextEditingController();
     _qrController = MobileScannerController(
       autoStart: true,
       detectionSpeed: DetectionSpeed.normal,
@@ -99,7 +129,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     _laserAnimation = Tween<double>(begin: 0.15, end: 0.85).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
-    if (_currentStep == 2) unawaited(_ensurePlateCamera());
+    if (_currentStep == CheckInStep.plate) unawaited(_ensurePlateCamera());
   }
 
   @override
@@ -113,46 +143,22 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     super.dispose();
   }
 
-  String _formatTime(DateTime dt) {
-    final local = dt.toLocal();
-    final h = local.hour.toString().padLeft(2, '0');
-    final m = local.minute.toString().padLeft(2, '0');
-    return '$h:$m WIB';
+  void _refreshClock() {
+    _clockNow = Formatters.time(DateTime.now());
   }
 
-  String get _currentFormattedTime => _formatTime(DateTime.now());
+  String get _posShortCode => areaShortLabel(widget.parkingLot);
 
-  String get _posShortCode {
-    if (widget.parkingLot.contains('•')) {
-      return widget.parkingLot.split('•').first.trim();
-    }
-    return 'POS-UTAMA';
-  }
-
-  String get _posFullName {
-    if (widget.parkingLot.contains('•')) {
-      return widget.parkingLot.split('•').last.trim();
-    }
-    return widget.parkingLot;
-  }
+  String get _posFullName => areaFullLabel(widget.parkingLot);
 
   void _copyNimToClipboard() {
-    Clipboard.setData(ClipboardData(text: _nim));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.spPrimary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text('NIM $_nim berhasil disalin ke clipboard'),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    final nim = _nim.trim();
+    if (nim.isEmpty) {
+      AppSnackBar.error(context, 'NIM belum terisi.');
+      return;
+    }
+    Clipboard.setData(ClipboardData(text: nim));
+    AppSnackBar.success(context, 'NIM $nim berhasil disalin ke clipboard');
   }
 
   void _showPlateEditDialog() {
@@ -223,8 +229,13 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
           ),
           ElevatedButton(
             onPressed: () {
+              final error = Validators.plate(_plateController.text);
+              if (error != null) {
+                AppSnackBar.error(context, error);
+                return;
+              }
               setState(() {
-                _plateNumber = _plateController.text.trim().toUpperCase();
+                _plateNumber = Validators.normalizePlate(_plateController.text);
               });
               Navigator.of(ctx).pop();
             },
@@ -301,6 +312,11 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
           ),
           ElevatedButton(
             onPressed: () {
+              final error = Validators.nim(_nimController.text);
+              if (error != null) {
+                AppSnackBar.error(context, error);
+                return;
+              }
               setState(() {
                 _nim = _nimController.text.trim();
               });
@@ -319,20 +335,109 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   }
 
   /// Pindah step + serah-terima kamera: hanya satu kamera aktif.
-  /// Step 2 = kamera plat; step 1 = scanner QR; selain itu keduanya berhenti.
-  void _setStep(int s) {
-    setState(() => _currentStep = s);
+  void _setStep(CheckInStep s) {
+    setState(() {
+      _currentStep = s;
+      _refreshClock();
+      if (s == CheckInStep.manualNim) _cameFromManual = true;
+    });
     _applyCameraForStep(s);
   }
 
-  void _applyCameraForStep(int s) {
+  void _goBack() {
+    switch (_currentStep) {
+      case CheckInStep.confirm:
+        _setStep(CheckInStep.plate);
+        break;
+      case CheckInStep.plate:
+        _setStep(_cameFromManual ? CheckInStep.manualNim : CheckInStep.ktm);
+        break;
+      case CheckInStep.manualNim:
+        _setStep(CheckInStep.ktm);
+        break;
+      case CheckInStep.ktm:
+        Navigator.of(context).pop();
+        break;
+    }
+  }
+
+  bool _tryNextFromKtm() {
+    final error = Validators.nim(_nimController.text.isEmpty ? _nim : _nimController.text);
+    if (error != null) {
+      AppSnackBar.error(context, error);
+      return false;
+    }
+    setState(() {
+      _nim = _nimController.text.trim();
+    });
+    _setStep(CheckInStep.plate);
+    return true;
+  }
+
+  bool _tryNextFromManual() {
+    final error = Validators.nim(_nimController.text);
+    if (error != null) {
+      AppSnackBar.error(context, error);
+      return false;
+    }
+    if (!_manualKtmVerified) {
+      AppSnackBar.error(context, 'Centang verifikasi KTM fisik terlebih dahulu.');
+      return false;
+    }
+    setState(() {
+      _nim = _nimController.text.trim();
+    });
+    _setStep(CheckInStep.plate);
+    return true;
+  }
+
+  bool _tryNextFromPlate() {
+    final source = _plateController.text.isEmpty ? _plateNumber : _plateController.text;
+    final error = Validators.plate(source);
+    if (error != null) {
+      AppSnackBar.error(context, error);
+      return false;
+    }
+    setState(() {
+      _plateNumber = Validators.normalizePlate(source);
+    });
+    _setStep(CheckInStep.confirm);
+    return true;
+  }
+
+  void _openManualNim() {
+    setState(() {
+      _cameFromManual = true;
+      _manualKtmVerified = false;
+      _refreshClock();
+      _currentStep = CheckInStep.manualNim;
+    });
+    _applyCameraForStep(CheckInStep.manualNim);
+  }
+
+  void _resetCheckInForm() {
+    setState(() {
+      _nim = '';
+      _nimController.clear();
+      _plateNumber = '';
+      _plateController.clear();
+      _platePhotoPath = null;
+      _platePreviewing = false;
+      _manualKtmVerified = false;
+      _cameFromManual = false;
+      _errorMessage = null;
+      _refreshClock();
+    });
+  }
+
+  void _applyCameraForStep(CheckInStep s) {
     try {
-      if (s == 2) {
+      if (s == CheckInStep.plate) {
         unawaited(_qrController.stop().catchError((_) {}));
         unawaited(_ensurePlateCamera());
       } else {
         unawaited(_plateCamera?.pausePreview().catchError((_) {}) ?? Future.value());
-        if (s == 1) unawaited(_qrController.start().catchError((_) {}));
+        if (s == CheckInStep.ktm) unawaited(_qrController.start().catchError((_) {}));
       }
     } catch (_) {
       // Perangkat tanpa kamera / plugin belum siap (widget test): abaikan.
@@ -380,7 +485,10 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   /// Shutter inline: jepret dari preview live, tampilkan pratinjau hasil.
   Future<void> _capturePlateInline() async {
     final camera = _plateCamera;
-    if (camera == null || !_plateCamReady || _plateCapturing) return;
+    if (camera == null || !_plateCamReady || _plateCapturing) {
+      AppSnackBar.info(context, 'Kamera belum siap. Tunggu sebentar lalu coba lagi.');
+      return;
+    }
     setState(() => _plateCapturing = true);
     try {
       final file = await camera.takePicture();
@@ -394,9 +502,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     } catch (_) {
       if (!mounted) return;
       setState(() => _plateCapturing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengambil foto. Coba lagi.')),
-      );
+      AppSnackBar.error(context, 'Gagal mengambil foto. Coba lagi.');
     }
   }
 
@@ -410,7 +516,10 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
 
   Future<void> _togglePlateTorch() async {
     final camera = _plateCamera;
-    if (camera == null || !_plateCamReady) return;
+    if (camera == null || !_plateCamReady) {
+      AppSnackBar.info(context, 'Kamera belum siap.');
+      return;
+    }
     try {
       await camera.setFlashMode(_flashlightOn ? FlashMode.off : FlashMode.torch);
     } catch (_) {
@@ -423,7 +532,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   /// Callback live scanner inline: isi NIM otomatis saat QR terbaca.
   /// Throttle 5 detik + abaikan kode sama agar tidak spam snackbar.
   void _onQrDetect(BarcodeCapture capture) {
-    if (!mounted || _currentStep != 1) return;
+    if (!mounted || _currentStep != CheckInStep.ktm) return;
     String? code;
     for (final barcode in capture.barcodes) {
       final value = barcode.rawValue;
@@ -445,9 +554,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       _nim = code!;
       _nimController.text = code;
     });
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('NIM terisi dari QR: $code')));
+    AppSnackBar.success(context, 'NIM terisi dari QR: $code');
   }
 
   /// Nyalakan ulang pemindaian setelah kode sama ingin dibaca lagi.
@@ -470,18 +577,25 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   }
 
   Future<void> _submitCheckIn() async {
+    final nimError = Validators.nim(_nim);
+    if (nimError != null) {
+      AppSnackBar.error(context, nimError);
+      return;
+    }
+    final plateError = Validators.plate(_plateNumber);
+    if (plateError != null) {
+      AppSnackBar.error(context, plateError);
+      return;
+    }
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
     });
 
     try {
-      final cleanNim = _nim.trim();
-      final cleanPlate = _plateNumber.trim().toUpperCase();
-
       final session = await ref.read(sessionRepositoryProvider).checkIn(
-            nim: cleanNim,
-            plate: cleanPlate,
+            nim: _nim.trim(),
+            plate: Validators.normalizePlate(_plateNumber),
             photoPath: _platePhotoPath,
           );
 
@@ -501,26 +615,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
             ? failure.message
             : 'Check-in gagal. Coba lagi.';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.spDanger,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      AppSnackBar.error(context, _errorMessage!);
     }
   }
 
@@ -530,8 +625,8 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     final displayNim = activeSession?.nim ?? _nim;
     final displayArea = activeSession?.areaName ?? _posFullName;
     final displayTime = activeSession != null
-        ? _formatTime(activeSession.checkedInAt)
-        : _currentFormattedTime;
+        ? Formatters.time(activeSession.checkedInAt)
+        : _clockNow;
     final sessionId = activeSession != null ? '#${activeSession.id}' : 'Sesi #089';
 
     showDialog(
@@ -638,11 +733,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
                   child: OutlinedButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      setState(() {
-                        _createdSession = null;
-                        _errorMessage = null;
-                      });
-                      _setStep(1);
+                      _resetCheckInForm();
+                      setState(() => _createdSession = null);
+                      _setStep(CheckInStep.ktm);
                     },
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppColors.spBorder),
@@ -770,12 +863,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
             onPressed: () async {
               final note = _voidReasonController.text.trim();
               if (note.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    backgroundColor: AppColors.spDanger,
-                    content: Text('Pembatalan check-in wajib disertai alasan.'),
-                  ),
-                );
+                AppSnackBar.error(context, 'Pembatalan check-in wajib disertai alasan.');
                 return;
               }
               Navigator.of(ctx).pop();
@@ -800,26 +888,17 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
             note: note,
           );
       if (!mounted) return;
+      _resetCheckInForm();
       setState(() {
         _isSubmitting = false;
         _createdSession = null;
       });
-      _setStep(1);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.spSuccess,
-          content: Text('Sesi #$sessionId berhasil dibatalkan (void).'),
-        ),
-      );
+      _setStep(CheckInStep.ktm);
+      AppSnackBar.success(context, 'Sesi #$sessionId berhasil dibatalkan (void).');
     } on Failure catch (failure) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.spDanger,
-          content: Text(failure.message),
-        ),
-      );
+      AppSnackBar.error(context, failure.message);
     }
   }
 
@@ -843,7 +922,6 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
                     child: _buildCurrentStepBody(),
                   ),
                 ),
-                _buildBottomNav(),
               ],
             ),
           ),
@@ -852,17 +930,15 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     );
   }
 
-  /// App Bar matching smartpark canonical header
   Widget _buildCurrentStepBody() {
     switch (_currentStep) {
-      case 1:
+      case CheckInStep.ktm:
         return _buildStep1ScanKtm();
-      case 10:
+      case CheckInStep.manualNim:
         return _buildStep1AltManualNim();
-      case 2:
+      case CheckInStep.plate:
         return _buildStep2ScanPlat();
-      case 3:
-      default:
+      case CheckInStep.confirm:
         return _buildStep3Konfirmasi();
     }
   }

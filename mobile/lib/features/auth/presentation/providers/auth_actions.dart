@@ -1,9 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/failures/failure.dart';
-import '../../../../core/session/session_store.dart';
+import '../../../../core/session/officer_identity.dart';
 import '../../../../core/di/providers.dart';
 import 'login_controller.dart';
+
+/// Menandai identitas sesi sebagai keluar agar layar yang masih menonton
+/// ulang ke keadaan belum-masuk, sekaligus mereset formulir login agar sesi
+/// berikutnya (mis. POS bersama) tidak terisi pilihan petugas sebelumnya.
+///
+/// HANYA state sesi/formulir yang dibuang di sini: controller data (beranda,
+/// kendaraan, riwayat, konsol SPV) mengambil data langsung di `build()`,
+/// sehingga invalidate tanpa sesi aktif justru meracuni state dengan galat
+/// 401 untuk login berikutnya. Data basi milik sesi lama dibuang lewat
+/// [resetSessionScopedState] tepat setelah login berikutnya berhasil.
+void _resetIdentityOnly(Ref ref) {
+  ref.invalidate(officerIdentityProvider);
+  ref.invalidate(hasSessionProvider);
+  ref.invalidate(loginControllerProvider);
+}
 
 /// Keluar dari sesi: memanggil endpoint lalu membersihkan token lokal.
 ///
@@ -17,6 +32,7 @@ final signOutActionProvider = Provider<Future<void> Function()>((ref) {
       // Sesi lokal tetap dibuang meski server tidak terjangkau.
     }
     ref.read(sessionStoreProvider).clear();
+    _resetIdentityOnly(ref);
   };
 });
 
@@ -34,6 +50,7 @@ final leaveShiftActionProvider =
      try {
        await ref.read(authRepositoryProvider).leaveShift(note: note);
       ref.read(sessionStoreProvider).clear();
+      _resetIdentityOnly(ref);
       return null;
      } on Failure catch (failure) {
       if (failure is UnauthorizedFailure ||
@@ -42,6 +59,7 @@ final leaveShiftActionProvider =
         // Token/sesi sudah mati di server (mis. shift ditutup paksa
         // pengawas): tidak ada yang perlu ditutup, aman keluar lokal.
         ref.read(sessionStoreProvider).clear();
+        _resetIdentityOnly(ref);
         return null;
       }
       return failure;
@@ -49,11 +67,4 @@ final leaveShiftActionProvider =
    };
  });
 
-/// `true` bila belum ada token sama sekali.
-final hasSessionProvider = Provider<bool>((ref) {
-  final store = ref.watch(sessionStoreProvider);
-  return store.hasShift || store.hasOfficerSession;
-});
 
-/// Alias agar layar tidak mengimpor kelas penyimpanan langsung.
-typedef SessionSnapshot = SessionStore;

@@ -3,34 +3,48 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 
-/// Satu tujuan pada [AppBottomNav].
 class NavDestination {
   const NavDestination({
     required this.label,
     required this.icon,
     required this.activeIcon,
+    this.tooltip,
   });
 
   final String label;
   final IconData icon;
   final IconData activeIcon;
+
+  /// Pesan tooltip/semantik item; bila null, dipakai [label].
+  final String? tooltip;
 }
 
 /// Kerangka visual bottom navigation.
 ///
 /// Tidak tahu rute apa pun: pemanggil menentukan [currentIndex] dan bereaksi
 /// pada [onTap], sehingga tidak ada salinan navigasi di tiap layar.
+/// [logoutIndex] menandai item aksi keluar: item itu dirender dengan
+/// [ExcludeSemantics] agar screen reader tidak membacanya sebagai tab,
+/// dan tooltip-nya diganti [logoutTooltip].
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.destinations,
     required this.onTap,
+    this.logoutIndex,
+    this.logoutTooltip = 'Keluar',
   });
 
   final int currentIndex;
   final List<NavDestination> destinations;
   final ValueChanged<int> onTap;
+
+  /// Indeks item yang bertindak sebagai aksi (bukan tab), mis. Keluar.
+  final int? logoutIndex;
+
+  /// Tooltip/semantik khusus untuk item [logoutIndex].
+  final String logoutTooltip;
 
   static const List<NavDestination> officerDestinations = [
     NavDestination(
@@ -114,14 +128,26 @@ class AppBottomNav extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         items: [
-          for (final destination in destinations)
-            BottomNavigationBarItem(
-              icon: Icon(destination.icon),
-              activeIcon: Icon(destination.activeIcon),
-              label: destination.label,
-            ),
+          for (var i = 0; i < destinations.length; i++)
+            _item(destinations[i], i == logoutIndex),
         ],
       ),
+    );
+  }
+
+  BottomNavigationBarItem _item(NavDestination destination, bool isLogout) {
+    final item = BottomNavigationBarItem(
+      icon: Icon(destination.icon),
+      activeIcon: Icon(destination.activeIcon),
+      label: destination.label,
+      tooltip: isLogout ? logoutTooltip : (destination.tooltip ?? destination.label),
+    );
+    if (!isLogout) return item;
+    return BottomNavigationBarItem(
+      icon: ExcludeSemantics(child: Icon(destination.icon)),
+      activeIcon: ExcludeSemantics(child: Icon(destination.activeIcon)),
+      label: destination.label,
+      tooltip: logoutTooltip,
     );
   }
 }

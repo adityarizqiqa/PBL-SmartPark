@@ -71,8 +71,10 @@ class VehiclesController extends Notifier<VehiclesState> {
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
       final vehicles = await ref.read(getActiveVehiclesProvider)();
+      if (!ref.mounted) return;
       state = state.copyWith(all: vehicles, isLoading: false);
     } on Failure catch (failure) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, failure: failure);
     }
   }

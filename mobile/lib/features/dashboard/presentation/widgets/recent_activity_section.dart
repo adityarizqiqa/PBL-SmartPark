@@ -4,6 +4,7 @@ import '../../../../core/entities/parking_session.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/empty_state.dart';
 
 /// Daftar aktivitas sesi terakhir di pos.
 class RecentActivitySection extends StatelessWidget {
@@ -44,8 +45,8 @@ class RecentActivitySection extends StatelessWidget {
             TextButton(
               onPressed: onSeeAll,
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                minimumSize: Size.zero,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: const Text(
@@ -61,30 +62,10 @@ class RecentActivitySection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (sessions.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            decoration: BoxDecoration(
-              color: AppColors.spSurface,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.spBorder),
-            ),
-            child: const Center(
-              child: Column(
-                children: [
-                  Icon(Icons.inbox_outlined, size: 36, color: AppColors.spInk4),
-                  SizedBox(height: 8),
-                  Text(
-                    'Belum ada aktivitas sesi di pos ini',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.spInk3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          const EmptyState(
+            icon: Icons.inbox_outlined,
+            title: 'Belum ada aktivitas',
+            message: 'Belum ada aktivitas sesi di pos ini.',
           )
         else
           ListView.separated(
@@ -238,9 +219,9 @@ class _DirectionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final background =
-        isCheckIn ? const Color(0xFFD0E4FF) : AppColors.spTint5;
+        isCheckIn ? AppColors.spTint4 : AppColors.spTint5;
     final foreground =
-        isCheckIn ? const Color(0xFF114976) : AppColors.spPrimary800;
+        isCheckIn ? AppColors.spPrimary700 : AppColors.spPrimary800;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -282,7 +263,7 @@ class PlateBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF213145),
+        color: AppColors.spNavy,
         borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
@@ -295,7 +276,7 @@ class PlateBadge extends StatelessWidget {
       child: Text(
         plate,
         style: const TextStyle(
-          fontFamily: 'monospace',
+          fontFamily: 'RobotoMono',
           fontSize: 12,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,

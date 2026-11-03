@@ -550,11 +550,11 @@ extension _CheckInStepPlate on _CheckInPageState {
 
           // Ergonomic Primary Field Action Controls
           ElevatedButton.icon(
-            onPressed: () => _setStep(3), // Move to Step 3: Konfirmasi
+            onPressed: _tryNextFromPlate,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spPrimary,
               foregroundColor: Colors.white,
-              elevation: 2,
+              elevation: 0,
               minimumSize: const Size.fromHeight(56),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),

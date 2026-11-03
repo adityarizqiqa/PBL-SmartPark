@@ -30,7 +30,7 @@ class VehicleCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.spSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: const Color(0x4DC2C7D0)),
+        border: Border.all(color: AppColors.spBorderMid),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -139,7 +139,7 @@ class VehicleCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0x66D3E4FE),
+              color: AppColors.spTint4,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(
@@ -172,10 +172,10 @@ class VehicleCard extends StatelessWidget {
                     onPressed: onDetail,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.spPrimary700,
-                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                      side: const BorderSide(color: AppColors.spInfoBorder),
                       backgroundColor: AppColors.spTint3,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                     ),
                     icon: const Icon(Icons.assignment_outlined, size: 16),
@@ -193,16 +193,8 @@ class VehicleCard extends StatelessWidget {
               Expanded(
                 child: SizedBox(
                   height: 44,
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: onCheckOut,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.spPrimary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
                     icon: const Icon(Icons.logout_rounded, size: 16),
                     label: const Text(
                       'Check-Out',
@@ -274,7 +266,7 @@ class _ParkedPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFD1FAE5),
+        color: AppColors.spSuccessBg,
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: const Row(
@@ -315,7 +307,7 @@ class PlateBadge extends StatelessWidget {
         vertical: large ? 6 : 4,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF213145),
+        color: AppColors.spNavy,
         borderRadius: BorderRadius.circular(large ? 8 : 8),
         boxShadow: [
           BoxShadow(
@@ -330,7 +322,7 @@ class PlateBadge extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontFamily: 'monospace',
+          fontFamily: 'RobotoMono',
           fontSize: large ? 18 : 15,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,

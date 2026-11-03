@@ -3,8 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/entities/officer.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/utils/validators.dart';
+import '../../../../../core/widgets/app_snack_bar.dart';
+import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/error_banner.dart';
 import '../../../../../core/widgets/spv_app_bar.dart';
-import '../../../../auth/presentation/pages/login_page.dart';
+import '../../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../auth/presentation/providers/auth_actions.dart';
 import '../providers/officers_controller.dart';
 
@@ -14,7 +19,11 @@ import '../providers/officers_controller.dart';
 /// Daftar, tambah, ubah peran, atur password, dan aktif/nonaktif akun ditulis
 /// ke backend lewat `/api/officers` memakai token pengawas.
 class OfficersPage extends ConsumerStatefulWidget {
-  const OfficersPage({super.key});
+  const OfficersPage({super.key, this.onLogout});
+
+  /// Disediakan shell agar konfirmasi + sign-out terpusat di satu tempat.
+  /// Null saat halaman dipakai di luar shell (mis. pengujian widget).
+  final VoidCallback? onLogout;
 
   @override
   ConsumerState<OfficersPage> createState() => _OfficersPageState();
@@ -60,66 +69,19 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
 
   String get _selectedRoleValue => _isSupervisorRole ? 'spv' : 'officer';
 
-  void _showFeedback(String title, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: isError ? AppColors.spDanger : AppColors.spPrimary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline_rounded : Icons.info_outline,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    message,
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   Future<void> _handleAdd() async {
     final name = _namaController.text.trim();
-    final nipInput = _nipController.text.trim().toUpperCase();
+    final nipInput = Validators.normalizeCode(_nipController.text);
     final phone = _hpController.text.trim();
     final password = _passController.text;
 
     if (name.isEmpty) {
-      _showFeedback(
-        'Data belum lengkap',
-        'Nama petugas wajib diisi.',
-        isError: true,
-      );
+      AppSnackBar.error(context, 'Nama petugas wajib diisi.');
       return;
     }
 
     if (password.length < 6) {
-      _showFeedback(
-        'Password terlalu pendek',
-        'Password minimal 6 karakter.',
-        isError: true,
-      );
+      AppSnackBar.error(context, 'Password minimal 6 karakter.');
       return;
     }
 
@@ -132,7 +94,7 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
         );
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal menambah petugas', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
     _nipController.clear();
@@ -141,7 +103,7 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
     _passController.clear();
     setState(() => _selectedRole = _roleLabels.first);
     FocusScope.of(context).unfocus();
-    _showFeedback('Petugas ditambahkan', '$name berhasil ditambahkan.');
+    AppSnackBar.success(context, '$name berhasil ditambahkan.');
   }
 
   Future<void> _setPassword(Officer officer) async {
@@ -158,10 +120,10 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
         .setPassword(officer, newPassword);
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal mengatur password', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
-    _showFeedback('Password diatur', 'Password ${officer.name} tersimpan.');
+    AppSnackBar.success(context, 'Password ${officer.name} tersimpan.');
   }
 
   Future<void> _toggleActive(Officer officer) async {
@@ -170,15 +132,10 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
         .toggleActive(officer);
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal mengubah status', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
-    _showFeedback(
-      officer.isActive ? 'Petugas dinonaktifkan' : 'Petugas diaktifkan',
-      officer.isActive
-          ? '${officer.name} tidak boleh masuk sampai diaktifkan kembali.'
-          : '${officer.name} boleh masuk kembali.',
-    );
+    AppSnackBar.success(context, officer.isActive? '${officer.name} tidak boleh masuk sampai diaktifkan kembali.': '${officer.name} boleh masuk kembali.',);
   }
 
   Future<void> _changeRole(Officer officer) async {
@@ -188,7 +145,9 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.spSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
         title: const Text(
           'Ubah Peran Petugas?',
           style: TextStyle(
@@ -216,20 +175,9 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
               ),
             ),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.spPrimary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Ubah',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+            child: const Text('Ubah'),
           ),
         ],
       ),
@@ -241,72 +189,30 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
         await ref.read(officersControllerProvider.notifier).changeRole(officer);
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal mengubah peran', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
-    _showFeedback('Peran diubah', '${officer.name} kini $nextLabel.');
+    AppSnackBar.success(context, '${officer.name} kini $nextLabel.');
   }
 
-  Future<void> _doLogout() async {
+  Future<void> _handleLogout() async {
+    if (widget.onLogout != null) {
+      widget.onLogout!();
+      return;
+    }
+    // Di luar shell (mis. pengujian widget): konfirmasi + keluar lokal,
+    // lalu kembali ke rute pertama.
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Keluar dari Konsol Pengawas?',
+      message: 'Anda akan kembali ke halaman masuk.',
+    );
+    if (!confirmed || !mounted) return;
     await ref.read(signOutActionProvider)();
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
-  void _handleLogout() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.spSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Keluar dari Konsol Pengawas?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.spInk,
-          ),
-        ),
-        content: const Text(
-          'Anda akan kembali ke halaman masuk.',
-          style: TextStyle(fontSize: 14, color: AppColors.spInk2, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Batal',
-              style: TextStyle(
-                color: AppColors.spInk3,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _doLogout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.spDanger,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Keluar',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -537,14 +443,14 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: ElevatedButton.icon(
+            child: FilledButton.icon(
               onPressed: _saving ? null : _handleAdd,
               icon: _saving
                   ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
+                        strokeWidth: 2,
                         color: Colors.white,
                       ),
                     )
@@ -552,14 +458,6 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
               label: const Text(
                 'Tambah Petugas',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.spPrimary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
               ),
             ),
           ),
@@ -786,100 +684,16 @@ class _OfficersPageState extends ConsumerState<OfficersPage> {
             ),
           )
         else if (_error != null)
-          _buildErrorBanner(_error!)
+          ErrorBanner(message: _error!, onRetry: _load)
         else if (_officers.isEmpty)
-          _buildEmptyState()
+          const EmptyState(
+            icon: Icons.groups_outlined,
+            title: 'Belum ada petugas',
+            message: 'Tambahkan akun petugas pertama lewat formulir di atas.',
+          )
         else
           ..._officers.map(_buildOfficerCard),
       ],
-    );
-  }
-
-  Widget _buildErrorBanner(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.spDangerBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.error_outline_rounded,
-                  size: 18, color: AppColors.spDanger),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Gagal memuat petugas',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.spDangerInk,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: 12,
-              height: 1.4,
-              color: AppColors.spDangerInk,
-            ),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Coba lagi'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.spDangerInk,
-              side: const BorderSide(color: AppColors.spDanger),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      decoration: BoxDecoration(
-        color: AppColors.spSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.spBorder),
-      ),
-      child: Column(
-        children: const [
-          Icon(Icons.groups_outlined, size: 40, color: AppColors.spInk4),
-          SizedBox(height: 10),
-          Text(
-            'Belum ada petugas',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.spInk,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Tambahkan akun petugas pertama lewat formulir di atas.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.spInk3),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1140,7 +954,9 @@ class _SetPasswordDialogState extends State<_SetPasswordDialog> {
 
     return AlertDialog(
       backgroundColor: AppColors.spSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
       title: Row(
         children: const [
           Icon(
@@ -1230,23 +1046,14 @@ class _SetPasswordDialogState extends State<_SetPasswordDialog> {
             ),
           ),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               Navigator.of(context).pop(_controller.text);
             }
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.spPrimary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
           child: const Text(
             'Simpan',
-            style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
       ],

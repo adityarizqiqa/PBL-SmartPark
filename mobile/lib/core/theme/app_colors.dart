@@ -29,12 +29,13 @@ class AppColors {
   static const Color spTint4 = Color(0xFFD3E4FE);
   static const Color spTint5 = Color(0xFFCCE5FF);
   static const Color spInfoBg = Color(0xFFEFF6FF);
-
+  static const Color spInfoBorder = Color(0xFFBFDBFE);
+  static const Color spInfoDot = Color(0xFF2563EB);
   // Borders
   static const Color spBorder = Color(0xFFE2E8F0);
   static const Color spBorderSoft = Color(0x99DCE9FF);
   static const Color spBorderMid = Color(0x80C2C7D0);
-
+  static const Color spNeutralBg = Color(0xFFF1F5F9);
   // Status
   static const Color spDanger = Color(0xFFBA1A1A);
   static const Color spDangerBg = Color(0xFFFFDAD6);

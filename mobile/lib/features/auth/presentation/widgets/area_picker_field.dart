@@ -20,13 +20,46 @@ class AreaPickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isSupervisor) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pilih Lahan Parkir',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+              color: AppColors.spInk,
+            ),
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 18,
+                color: AppColors.spInk3,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Area dipilih saat bergabung shift petugas.',
+                  style: TextStyle(fontSize: 12, color: AppColors.spInk3),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
+          children: const <Widget>[
+            Text(
               'Pilih Lahan Parkir',
               style: TextStyle(
                 fontSize: 14,
@@ -35,19 +68,12 @@ class AreaPickerField extends StatelessWidget {
                 color: AppColors.spInk,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Flexible(
               child: Text(
-                isSupervisor
-                    ? 'Opsional untuk SPV'
-                    : 'Diperlukan untuk petugas gerbang.',
+                'Diperlukan untuk petugas gerbang.',
                 textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isSupervisor ? AppColors.spSuccess : AppColors.spInk3,
-                  fontWeight:
-                      isSupervisor ? FontWeight.w600 : FontWeight.normal,
-                ),
+                style: TextStyle(fontSize: 11, color: AppColors.spInk3),
               ),
             ),
           ],
@@ -58,9 +84,7 @@ class AreaPickerField extends StatelessWidget {
           initialValue: selected,
           decoration: InputDecoration(
             filled: true,
-            fillColor: isSupervisor
-                ? AppColors.spTint1.withValues(alpha: 0.5)
-                : AppColors.spTint1,
+            fillColor: AppColors.spTint1,
             prefixIcon: const Icon(
               Icons.location_on_outlined,
               size: 20,
@@ -107,7 +131,7 @@ class AreaPickerField extends StatelessWidget {
           ],
           onChanged: onSelected,
           validator: (value) {
-            if (!isSupervisor && value == null) {
+            if (value == null) {
               return 'Pilih lahan parkir terlebih dahulu';
             }
             return null;

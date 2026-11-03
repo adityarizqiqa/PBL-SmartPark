@@ -49,4 +49,8 @@ class Validators {
         ? cleaned.substring(0, plateMaxLength)
         : cleaned;
   }
+
+  /// Kode/NIP: rapikan spasi lalu kapitalkan, tanpa membuang karakter lain.
+  static String normalizeCode(String? value) =>
+      (value ?? '').trim().toUpperCase();
 }

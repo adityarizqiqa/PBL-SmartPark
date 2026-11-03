@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'brand.dart';
 
 /// Bilah atas bersama untuk layar di dalam shell petugas.
 ///
@@ -55,56 +56,10 @@ class PageAppBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                 ],
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: AppColors.spPrimary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.directions_car,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'SmartPark',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.3,
-                                color: AppColors.spPrimary,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          _CampusTag(),
-                        ],
-                      ),
-                      Text(
-                        title,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.spInk3,
-                        ),
-                      ),
-                    ],
+                  child: SmartParkBrand(
+                    subtitle: title,
+                    tag: const CampusTag(),
                   ),
                 ),
               ],
@@ -112,29 +67,6 @@ class PageAppBar extends StatelessWidget {
           ),
           ?trailing,
         ],
-      ),
-    );
-  }
-}
-
-class _CampusTag extends StatelessWidget {
-  const _CampusTag();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(
-        color: AppColors.spTint2,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: const Text(
-        'Campus',
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          color: AppColors.spPrimary600,
-        ),
       ),
     );
   }

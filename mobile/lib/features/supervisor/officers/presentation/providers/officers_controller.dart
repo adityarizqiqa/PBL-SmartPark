@@ -56,8 +56,10 @@ class OfficersController extends Notifier<OfficersState> {
       final officers = await ref.read(officerRepositoryProvider).fetchOfficers(
             includeInactive: true,
           );
+      if (!ref.mounted) return;
       state = state.copyWith(officers: officers, isLoading: false);
     } on Failure catch (failure) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, failure: failure);
     }
   }
@@ -83,7 +85,7 @@ class OfficersController extends Notifier<OfficersState> {
     } on Failure catch (failure) {
       return failure.message;
     } finally {
-      state = state.copyWith(isSaving: false);
+      if (ref.mounted) state = state.copyWith(isSaving: false);
     }
   }
 
@@ -118,7 +120,7 @@ class OfficersController extends Notifier<OfficersState> {
     } on Failure catch (failure) {
       return failure.message;
     } finally {
-      state = state.copyWith(isSaving: false);
+      if (ref.mounted) state = state.copyWith(isSaving: false);
     }
   }
 }

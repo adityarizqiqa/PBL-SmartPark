@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
+
 /// Halaman kamera live: pratinjau + tombol shutter.
 ///
 /// Mengembalikan path berkas foto ([String]) lewat `Navigator.pop`,
@@ -80,8 +83,9 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
     } on CameraException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.description ?? 'Gagal mengambil foto.')),
+      AppSnackBar.error(
+        context,
+        e.description ?? 'Gagal mengambil foto.',
       );
     }
   }
@@ -108,6 +112,7 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
         title: Text(widget.title),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           if (controller != null && controller.value.isInitialized)
             IconButton(
@@ -124,16 +129,37 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(
-                    _error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _error = null;
+                            _controller = null;
+                          });
+                          unawaited(_setup());
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.spPrimary,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Coba Lagi'),
+                      ),
+                    ],
                   ),
                 ),
               )
             : controller == null || !controller.value.isInitialized
                 ? const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+                    child: CircularProgressIndicator(color: AppColors.spPrimary),
                   )
                 : Column(
                     children: [
@@ -162,7 +188,7 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
                                       width: 24,
                                       height: 24,
                                       child: CircularProgressIndicator(
-                                        color: Colors.white,
+                                        color: AppColors.spPrimary,
                                         strokeWidth: 2,
                                       ),
                                     )

@@ -18,6 +18,7 @@ class VehiclesPage extends ConsumerStatefulWidget {
     required this.onCheckOut,
     required this.onScanCheckOut,
     this.onBack,
+    this.onLogout,
   });
 
   /// Dipakai bila baris tidak membawa nama area.
@@ -30,6 +31,10 @@ class VehiclesPage extends ConsumerStatefulWidget {
   final VoidCallback onScanCheckOut;
 
   final VoidCallback? onBack;
+
+  /// Keluar dari sesi; diteruskan shell agar tab ini tetap punya jalan
+  /// keluar tanpa menduplikasi logika logout.
+  final VoidCallback? onLogout;
 
   @override
   ConsumerState<VehiclesPage> createState() => _VehiclesPageState();
@@ -61,7 +66,7 @@ class _VehiclesPageState extends ConsumerState<VehiclesPage> {
                     PageAppBar(
                       title: 'Kendaraan Parkir',
                       onBack: widget.onBack,
-                      trailing: const ShiftActiveBadge(),
+                      trailing: _TabTrailing(onLogout: widget.onLogout),
                     ),
                     Expanded(
                       child: RefreshIndicator(
@@ -111,6 +116,34 @@ class _VehiclesPageState extends ConsumerState<VehiclesPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Lencana shift + tombol keluar untuk tab non-beranda petugas.
+class _TabTrailing extends StatelessWidget {
+  const _TabTrailing({required this.onLogout});
+
+  final VoidCallback? onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const ShiftActiveBadge(),
+        if (onLogout != null) ...[
+          const SizedBox(width: 4),
+          IconButton(
+            onPressed: onLogout,
+            icon: const Icon(Icons.logout_rounded, size: 20),
+            color: AppColors.spInk3,
+            tooltip: 'Keluar',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -400,7 +433,7 @@ class _ScanFab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF8FBDF0),
+                      color: AppColors.spTint5,
                     ),
                   ),
                 ],

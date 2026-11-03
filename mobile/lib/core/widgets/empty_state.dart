@@ -10,16 +10,19 @@ class EmptyState extends StatelessWidget {
     required this.icon,
     required this.title,
     this.message,
+    this.subtitle,
     this.action,
   });
 
   final IconData icon;
   final String title;
   final String? message;
+  final String? subtitle;
   final Widget? action;
 
   @override
   Widget build(BuildContext context) {
+    final detail = message ?? subtitle;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -44,10 +47,10 @@ class EmptyState extends StatelessWidget {
                 color: AppColors.spInk,
               ),
             ),
-            if (message != null) ...[
+            if (detail != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(
-                message!,
+                detail,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12, color: AppColors.spInk3),
               ),

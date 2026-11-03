@@ -280,7 +280,7 @@ extension _CheckInStepConfirm on _CheckInPageState {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  _currentFormattedTime,
+                                  _clockNow,
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
@@ -415,7 +415,7 @@ extension _CheckInStepConfirm on _CheckInPageState {
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: AppColors.spPrimary.withValues(alpha: 0.4),
                     disabledForegroundColor: Colors.white70,
-                    elevation: 2,
+                    elevation: 0,
                     minimumSize: const Size.fromHeight(60),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
@@ -438,7 +438,7 @@ extension _CheckInStepConfirm on _CheckInPageState {
                 const SizedBox(height: 10),
 
                 OutlinedButton.icon(
-                  onPressed: () => _setStep(2), // Back to plate scan / edit
+                  onPressed: () => _setStep(CheckInStep.plate),
                   style: OutlinedButton.styleFrom(
                     backgroundColor: AppColors.spTint1,
                     foregroundColor: AppColors.spPrimary,

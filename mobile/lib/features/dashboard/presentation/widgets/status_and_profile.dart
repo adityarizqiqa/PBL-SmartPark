@@ -44,7 +44,7 @@ class StatusBar extends StatelessWidget {
                   child: Text(
                     identity.areaName.isEmpty
                         ? 'Sistem Online • Pos Aktif'
-                        : 'Sistem Online • ${identity.areaCode}',
+                        : 'Sistem Online • ${identity.shortLabel}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -116,9 +116,9 @@ class ProfileCard extends StatelessWidget {
                   children: [
                     _Chip(
                       icon: Icons.local_parking_rounded,
-                      label: identity.areaCode.isEmpty ? '—' : identity.areaCode,
-                      background: const Color(0xFFD0E4FF),
-                      foreground: const Color(0xFF114976),
+                      label: identity.areaCode.isEmpty ? '—' : identity.shortLabel,
+                      background: AppColors.spTint4,
+                      foreground: AppColors.spPrimary700,
                     ),
                     const _Chip(
                       icon: Icons.schedule_rounded,

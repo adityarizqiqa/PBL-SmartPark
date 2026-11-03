@@ -78,7 +78,7 @@ class SessionDetailSheet extends StatelessWidget {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: AppColors.spTint3,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
                           child: const Icon(
                             Icons.receipt_long_rounded,
@@ -148,9 +148,9 @@ class SessionDetailSheet extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0x99FFF1F2),
-                    border: Border.all(color: const Color(0xFFFECDD3)),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.spDangerBg,
+                    border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -160,7 +160,7 @@ class SessionDetailSheet extends StatelessWidget {
                           Icon(
                             Icons.compare_arrows_rounded,
                             size: 16,
-                            color: Color(0xFFBE123C),
+                            color: AppColors.spDangerInk,
                           ),
                           SizedBox(width: 6),
                           Text(
@@ -168,7 +168,7 @@ class SessionDetailSheet extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFBE123C),
+                              color: AppColors.spDangerInk,
                             ),
                           ),
                         ],
@@ -218,15 +218,15 @@ class SessionDetailSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: AppColors.spWarnBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(color: AppColors.spWarnInk),
                   ),
                   child: Text(
                     'Catatan: ${item.verificationNote}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF78350F),
+                      color: AppColors.spWarnInk,
                     ),
                   ),
                 ),
@@ -234,21 +234,12 @@ class SessionDetailSheet extends StatelessWidget {
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: FilledButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.spPrimary,
-                    foregroundColor: Colors.white,
+                  style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
                   ),
-                  child: const Text(
-                    'Tutup',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
+                  child: const Text('Tutup'),
                 ),
               ),
             ],

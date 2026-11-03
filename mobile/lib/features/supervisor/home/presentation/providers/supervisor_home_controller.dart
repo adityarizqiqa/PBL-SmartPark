@@ -64,14 +64,17 @@ class SupervisorHomeController extends Notifier<SupervisorHomeState> {
       final areas = await ref
           .read(homeAreaRepositoryProvider)
           .fetchAreas(includeInactive: true);
+      if (!ref.mounted) return;
       final shifts =
           await ref.read(homeShiftRepositoryProvider).fetchShifts(openOnly: true);
+      if (!ref.mounted) return;
       state = state.copyWith(
         areas: areas,
         openShifts: shifts,
         isLoading: false,
       );
     } on Failure catch (failure) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, failure: failure);
     }
   }

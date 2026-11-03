@@ -163,7 +163,7 @@ void main() {
       onCheckOut: (vehicle) => selected = vehicle,
     );
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Check-Out'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Check-Out'));
     await tester.pumpAndSettle();
 
     expect(selected?.id, 7);

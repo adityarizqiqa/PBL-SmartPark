@@ -4,6 +4,14 @@ import '../../../../core/di/providers.dart';
 import '../../../../core/entities/area.dart';
 import '../../../../core/entities/officer.dart';
 import '../../../../core/failures/failure.dart';
+import '../../../../core/session/officer_identity.dart';
+import '../../../dashboard/presentation/providers/dashboard_controller.dart';
+import '../../../history/presentation/providers/history_controller.dart';
+import '../../../supervisor/areas/presentation/providers/areas_controller.dart';
+import '../../../supervisor/home/presentation/providers/supervisor_home_controller.dart';
+import '../../../supervisor/officers/presentation/providers/officers_controller.dart';
+import '../../../supervisor/shifts/presentation/providers/shifts_controller.dart';
+import '../../../vehicles/presentation/providers/vehicles_controller.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_session.dart';
@@ -15,6 +23,31 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     AuthRemoteDataSource(ref.watch(apiClientProvider)),
   );
 });
+
+/// `true` bila ada token sesi aktif.
+final hasSessionProvider = Provider<bool>((ref) {
+  final store = ref.watch(sessionStoreProvider);
+  return store.hasShift || store.hasOfficerSession;
+});
+
+/// Membuang state milik sesi sebelumnya agar tidak terbaca pemakai berikutnya.
+///
+/// WAJIB dipanggil setelah sesi baru tersimpan (login berhasil): controller
+/// berumur aplikasi dibangun ulang malas lalu mengambil ulang data dengan
+/// token baru. JANGAN dipanggil saat logout — `build()` tiap controller
+/// langsung mengambil data, sehingga invalidate tanpa sesi aktif hanya
+/// meracuni state dengan galat 401 untuk login berikutnya.
+void resetSessionScopedState(Ref ref) {
+  ref.invalidate(officerIdentityProvider);
+  ref.invalidate(hasSessionProvider);
+  ref.invalidate(dashboardControllerProvider);
+  ref.invalidate(vehiclesControllerProvider);
+  ref.invalidate(historyControllerProvider);
+  ref.invalidate(supervisorHomeControllerProvider);
+  ref.invalidate(areasControllerProvider);
+  ref.invalidate(shiftsControllerProvider);
+  ref.invalidate(officersControllerProvider);
+}
 
 final loadLoginOptionsProvider = Provider<LoadLoginOptions>((ref) {
   return LoadLoginOptions(ref.watch(authRepositoryProvider));
@@ -164,6 +197,7 @@ class LoginController extends Notifier<LoginState> {
         area: area,
       );
       _applySession(result);
+      resetSessionScopedState(ref);
       state = state.copyWith(isSubmitting: false);
       return result;
     } on Failure catch (failure) {
@@ -186,16 +220,6 @@ class LoginController extends Notifier<LoginState> {
       case OfficerJoinedShift(:final login, :final officer):
         store.setShiftSession(login, userRole: officer.role);
     }
-  }
-
-  Future<void> signOut() async {
-    try {
-      await ref.read(authRepositoryProvider).signOut();
-    } on Failure {
-      // Keluar tetap dilanjutkan; token lokal dibuang apa pun hasilnya.
-    }
-    ref.read(sessionStoreProvider).clear();
-    state = const LoginState();
   }
 }
 

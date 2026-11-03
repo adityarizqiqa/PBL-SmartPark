@@ -195,6 +195,82 @@ http.Client _createTestHttpClient() {
         headers: {'content-type': 'application/json'},
       );
     }
+    if (path == '/api/shifts/leave') {
+      return http.Response(
+        jsonEncode({'id': 7}),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return http.Response('Not Found', 404);
+  });
+}
+
+http.Client _createSpvTestHttpClient() {
+  Map<String, dynamic> area() => {
+        'id': 1,
+        'code': 'POS-UTAMA',
+        'name': 'Pos Parkir Utama',
+        'is_active': true,
+      };
+  return MockClient((request) async {
+    final path = request.url.path;
+    if (path == '/api/officers') {
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 4,
+            'employee_no': 'SPV001',
+            'name': 'Dewi Kartika',
+            'phone': '0813',
+            'role': 'spv',
+            'is_active': true,
+            'has_password': true,
+          },
+        ]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path == '/api/areas') {
+      return http.Response(
+        jsonEncode([area()]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path == '/api/auth/sign-in') {
+      return http.Response(
+        jsonEncode({
+          'token': 'spv-tok-test',
+          'session': {
+            'id': 7,
+            'officer_id': 4,
+            'officer_name': 'Dewi Kartika',
+            'role': 'spv',
+            'signed_in_at': '2026-10-12T07:00:00',
+            'revoked_at': null,
+            'is_active': true,
+          },
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path == '/api/shifts') {
+      return http.Response(
+        jsonEncode([]),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (path == '/api/auth/sign-out') {
+      return http.Response(
+        jsonEncode({'ok': true}),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
     return http.Response('Not Found', 404);
   });
 }
@@ -287,24 +363,40 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Step 1: Scan KTM
+    // Step 1: Scan KTM (mulai kosong, tanpa dummy NIM).
     expect(find.text('LANGKAH 1 DARI 3'), findsOneWidget);
     expect(find.text('Scan KTM'), findsOneWidget);
-    expect(find.text('244107020204'), findsOneWidget);
+    expect(find.text('244107020204'), findsNothing);
 
-    // Tap Lanjut Scan Plat -> Step 2
-    await tester.ensureVisible(find.text('Lanjut Scan Plat'));
-    await tester.tap(find.text('Lanjut Scan Plat'));
-    await tester.pump(const Duration(milliseconds: 300));
+    // Isi NIM manual + verifikasi fisik KTM.
+    await tester.ensureVisible(find.text('Ketik NIM Manual'));
+    await tester.tap(find.text('Ketik NIM Manual'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.byType(TextField).first, '244107020204');
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Tap LANJUT SCAN PLAT KENDARAAN -> Step 2
+    await tester.ensureVisible(find.text('LANJUT SCAN PLAT KENDARAAN'));
+    await tester.tap(find.text('LANJUT SCAN PLAT KENDARAAN'));
+    await tester.pump(const Duration(milliseconds: 400));
 
     // Step 2: Scan Plat
     expect(find.text('Langkah 2 dari 3'), findsOneWidget);
     expect(find.text('Scan Plat Kendaraan'), findsWidgets);
 
+    // Koreksi plat manual lalu gunakan plat.
+    await tester.ensureVisible(find.text('Koreksi Manual'));
+    await tester.tap(find.text('Koreksi Manual'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.byType(TextField).last, 'N1234ABC');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Simpan'));
+    await tester.pump(const Duration(milliseconds: 400));
+
     // Tap Gunakan Plat Ini -> Step 3
     await tester.ensureVisible(find.text('Gunakan Plat Ini'));
     await tester.tap(find.text('Gunakan Plat Ini'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 400));
 
     // Step 3: Konfirmasi
     expect(find.text('Konfirmasi Check-In'), findsWidgets);
@@ -318,7 +410,7 @@ void main() {
     await tester.tap(
       find.widgetWithText(ElevatedButton, 'Konfirmasi Check-In'),
     );
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 600));
 
     // Success dialog
     expect(find.text('Check-In Berhasil!'), findsOneWidget);
@@ -348,21 +440,27 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Verify CheckOut screen elements
+    // CheckOut mulai kosong lalu lookup via tombol Cari.
     expect(find.text('Verifikasi Check-Out'), findsWidgets);
-    expect(find.text('POS KELUAR'), findsOneWidget);
+    expect(find.text('Belum ada sesi'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'N 1234 ABC');
+    await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Cari'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Cari'));
+    await tester.pump(const Duration(milliseconds: 800));
+
     expect(find.text('SESUAI'), findsOneWidget);
     expect(find.text('PERBANDINGAN PLAT'), findsOneWidget);
 
     // Toggle checkbox
     await tester.ensureVisible(find.text('KTM telah diperiksa secara visual'));
     await tester.tap(find.text('KTM telah diperiksa secara visual'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Confirm check-out
     await tester.ensureVisible(find.text('Konfirmasi Check-Out'));
     await tester.tap(find.text('Konfirmasi Check-Out'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 800));
 
     // Success dialog
     expect(find.text('Check-Out Berhasil!'), findsOneWidget);
@@ -370,5 +468,76 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(OfficerHomePage), findsOneWidget);
+  });
+
+  testWidgets('Logout lalu login lagi tetap membuka beranda petugas', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(SmartParkApp(httpClient: _createTestHttpClient()));
+    await tester.pumpAndSettle();
+
+    Future<void> login() async {
+      await tester.enterText(find.byType(TextFormField), 'password123');
+      await tester.ensureVisible(find.text('Mulai Bertugas'));
+      await tester.tap(find.text('Mulai Bertugas'));
+      await tester.pumpAndSettle();
+    }
+
+    await login();
+    expect(find.byType(OfficerHomePage), findsOneWidget);
+    expect(find.text('Sesi tidak ditemukan'), findsNothing);
+
+    // Keluar lewat tombol app bar lalu konfirmasi dialog.
+    await tester.tap(find.byTooltip('Keluar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Akhiri Sesi Pos?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
+    await tester.pumpAndSettle();
+
+    // Kembali ke halaman masuk.
+    expect(find.text('Mulai Bertugas'), findsOneWidget);
+
+    // Masuk lagi: harus ke beranda, bukan layar "Sesi tidak ditemukan".
+    await login();
+    expect(find.byType(OfficerHomePage), findsOneWidget);
+    expect(find.text('Sesi tidak ditemukan'), findsNothing);
+    expect(find.text('Beranda Petugas'), findsOneWidget);
+  });
+
+  testWidgets('SPV logout lalu login lagi tetap membuka konsol pengawas', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(SmartParkApp(httpClient: _createSpvTestHttpClient()));
+    await tester.pumpAndSettle();
+
+    Future<void> login() async {
+      await tester.enterText(find.byType(TextFormField), 'spvpass');
+      await tester.ensureVisible(find.text('Mulai Bertugas'));
+      await tester.tap(find.text('Mulai Bertugas'));
+      await tester.pumpAndSettle();
+    }
+
+    await login();
+    expect(find.text('Beranda Pengawas'), findsOneWidget);
+
+    // Keluar lewat tombol app bar lalu konfirmasi dialog.
+    await tester.tap(find.byTooltip('Keluar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keluar dari Konsol Pengawas?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
+    await tester.pumpAndSettle();
+
+    // Kembali ke halaman masuk, lalu masuk lagi ke konsol pengawas.
+    expect(find.text('Mulai Bertugas'), findsOneWidget);
+    await login();
+    expect(find.text('Beranda Pengawas'), findsOneWidget);
   });
 }

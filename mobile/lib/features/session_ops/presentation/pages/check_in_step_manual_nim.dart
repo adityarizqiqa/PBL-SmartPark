@@ -155,12 +155,14 @@ extension _CheckInStepManualNim on _CheckInPageState {
                   children: const [
                     Icon(Icons.verified_user_outlined, size: 14, color: AppColors.spPrimary600),
                     SizedBox(width: 6),
-                    Text(
-                      'Pastikan petugas telah memeriksa KTM secara visual.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.spInk2,
+                    Expanded(
+                      child: Text(
+                        'Pastikan petugas telah memeriksa KTM secara visual.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.spInk2,
+                        ),
                       ),
                     ),
                   ],
@@ -191,7 +193,7 @@ extension _CheckInStepManualNim on _CheckInPageState {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _currentFormattedTime,
+                              _clockNow,
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -335,18 +337,11 @@ extension _CheckInStepManualNim on _CheckInPageState {
 
           // Action Buttons
           ElevatedButton(
-            onPressed: _manualKtmVerified
-                ? () {
-                    rebuild(() {
-                      _nim = _nimController.text.trim();
-                    });
-                    _setStep(2); // Move to Step 2
-                  }
-                : null,
+            onPressed: _tryNextFromManual,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spPrimary,
               foregroundColor: Colors.white,
-              elevation: 2,
+              elevation: 0,
               minimumSize: const Size.fromHeight(56),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -363,7 +358,7 @@ extension _CheckInStepManualNim on _CheckInPageState {
           const SizedBox(height: 10),
 
           OutlinedButton(
-            onPressed: () => _setStep(1), // Back to Step 1 camera
+            onPressed: () => _setStep(CheckInStep.ktm),
             style: OutlinedButton.styleFrom(
               backgroundColor: AppColors.spSurface,
               foregroundColor: AppColors.spPrimary,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/brand.dart';
 
 /// Kepala beranda petugas: merek, indikator shift, dan tombol keluar.
 class OfficerHomeAppBar extends StatelessWidget {
@@ -34,62 +35,10 @@ class OfficerHomeAppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: AppColors.spPrimary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.directions_car,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'SmartPark',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.3,
-                                color: AppColors.spPrimary,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          _CampusTag(),
-                        ],
-                      ),
-                      Text(
-                        'Beranda Petugas',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.spInk3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          const Expanded(
+            child: SmartParkBrand(
+              subtitle: 'Beranda Petugas',
+              tag: CampusTag(),
             ),
           ),
           Row(
@@ -137,36 +86,13 @@ class OfficerHomeAppBar extends StatelessWidget {
                 onPressed: onLogout,
                 icon: const Icon(Icons.logout_rounded, size: 20),
                 color: AppColors.spInk3,
-                tooltip: 'Keluar Sesi',
+                tooltip: 'Keluar',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CampusTag extends StatelessWidget {
-  const _CampusTag();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(
-        color: AppColors.spTint2,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: const Text(
-        'Campus',
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          color: AppColors.spPrimary600,
-        ),
       ),
     );
   }

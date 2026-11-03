@@ -20,8 +20,16 @@ class OfficerIdentity {
   final String areaName;
   final bool isSupervisor;
 
-  /// `POS-UTAMA • Pos Parkir Utama`
-  String get areaLabel => areaCode.isEmpty ? areaName : '$areaCode • $areaName';
+  /// Kode pendek untuk lencana/ringkasan, mis. `POS-UTAMA`.
+  String get shortLabel => areaCode.isEmpty ? areaName : areaCode;
+
+  /// Label lengkap untuk judul, mis. `POS-UTAMA • Pos Parkir Utama`.
+  String get fullLabel => areaCode.isEmpty ? areaName : '$areaCode • $areaName';
+  /// `POS-UTAMA • Pos Parkir Utama` → `POS-UTAMA`
+  static String codeOf(String label) => _codeOf(label);
+
+  /// `POS-UTAMA • Pos Parkir Utama` → `Pos Parkir Utama`
+  static String nameOf(String label) => _nameOf(label);
 }
 
 /// Membaca identitas dari sesi aktif. `null` berarti belum masuk.
@@ -39,6 +47,12 @@ final officerIdentityProvider = Provider<OfficerIdentity?>((ref) {
     isSupervisor: store.isSupervisor,
   );
 });
+
+/// `POS-UTAMA • Pos Parkir Utama` → `POS-UTAMA`.
+String areaShortLabel(String label) => _codeOf(label);
+
+/// `POS-UTAMA • Pos Parkir Utama` → `Pos Parkir Utama`.
+String areaFullLabel(String label) => _nameOf(label);
 
 /// `POS-UTAMA • Pos Parkir Utama` → `POS-UTAMA`
 String _codeOf(String label) {

@@ -121,8 +121,10 @@ class HistoryController extends Notifier<HistoryState> {
         offset: offset,
         query: state.query,
       );
+      if (!ref.mounted) return;
       state = state.copyWith(page: page, isLoading: false);
     } on Failure catch (failure) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, failure: failure);
     }
   }

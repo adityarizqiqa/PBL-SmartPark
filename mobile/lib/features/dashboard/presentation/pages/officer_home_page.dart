@@ -39,14 +39,64 @@ class OfficerHomePage extends ConsumerWidget {
     final state = ref.watch(dashboardControllerProvider);
 
     if (identity == null) {
-      return const Scaffold(
-        body: EmptyState(
-          icon: Icons.lock_outline_rounded,
-          title: 'Sesi tidak ditemukan',
-          message: 'Silakan masuk kembali untuk melanjutkan.',
+      return Scaffold(
+        backgroundColor: AppColors.spBg,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      onPressed: onLogout,
+                      icon: const Icon(Icons.logout_rounded, size: 20),
+                      color: AppColors.spInk3,
+                      tooltip: 'Keluar',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: EmptyState(
+                        icon: Icons.lock_outline_rounded,
+                        title: 'Sesi tidak ditemukan',
+                        message: 'Silakan masuk kembali untuk melanjutkan.',
+                        action: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: () => ref.invalidate(
+                                officerIdentityProvider,
+                              ),
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('Muat Ulang'),
+                            ),
+                            TextButton.icon(
+                              onPressed: onLogout,
+                              icon: const Icon(Icons.logout_rounded, size: 18),
+                              label: const Text('Keluar'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       );
     }
+
 
     return Scaffold(
       backgroundColor: AppColors.spBg,
@@ -103,10 +153,17 @@ class OfficerHomePage extends ConsumerWidget {
                               padding: EdgeInsets.symmetric(vertical: 24),
                               child: Center(
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
+                                  strokeWidth: 2,
                                   color: AppColors.spPrimary,
                                 ),
                               ),
+                            )
+                          else
+                            const EmptyState(
+                              icon: Icons.query_stats_rounded,
+                              title: 'Statistik belum tersedia',
+                              message:
+                                  'Tarik untuk memuat ulang ringkasan operasional.',
                             ),
                           const SizedBox(height: AppSpacing.md),
                           RecentActivitySection(

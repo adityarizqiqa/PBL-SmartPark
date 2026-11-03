@@ -5,8 +5,13 @@ import '../../../../../core/entities/area.dart';
 import '../../../../../core/entities/assignment.dart';
 import '../../../../../core/entities/shift.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/utils/formatters.dart';
+import '../../../../../core/utils/name_formats.dart';
+import '../../../../../core/widgets/app_snack_bar.dart';
+import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/error_banner.dart';
 import '../../../../../core/widgets/spv_app_bar.dart';
-import '../../../../auth/presentation/pages/login_page.dart';
+import '../../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../auth/presentation/providers/auth_actions.dart';
 import '../providers/shifts_controller.dart';
 
@@ -17,7 +22,11 @@ import '../providers/shifts_controller.dart';
 /// `/api/shifts` memakai token pengawas. Daftar penugasan tiap shift ikut
 /// ditampilkan dari respons backend.
 class ShiftsPage extends ConsumerStatefulWidget {
-  const ShiftsPage({super.key});
+  const ShiftsPage({super.key, this.onLogout});
+
+  /// Disediakan shell agar konfirmasi + sign-out terpusat di satu tempat.
+  /// Null saat halaman dipakai di luar shell (mis. pengujian widget).
+  final VoidCallback? onLogout;
 
   @override
   ConsumerState<ShiftsPage> createState() => _ShiftsPageState();
@@ -49,12 +58,6 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
         value.second,
       ).toLocal();
 
-  String _clock(DateTime value) {
-    final local = _toLocal(value);
-    final hh = local.hour.toString().padLeft(2, '0');
-    final mm = local.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
-  }
 
   String _formatDate(DateTime value) {
     const days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
@@ -77,61 +80,17 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
         '${months[local.month - 1]} ${local.year}';
   }
 
-  void _showFeedback(String title, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: isError ? AppColors.spDanger : AppColors.spPrimary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline_rounded : Icons.info_outline,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    message,
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   Future<void> _handleOpenShift() async {
     final areaId = _selectedAreaId;
     if (areaId == null) {
-      _showFeedback(
-        'Lahan belum dipilih',
-        'Pilih lahan parkir terlebih dahulu.',
-        isError: true,
-      );
+      AppSnackBar.error(context, 'Pilih lahan parkir terlebih dahulu.');
       return;
     }
 
     if (_state.hasOpenShift(areaId)) {
-      _showFeedback(
-        'Shift sudah terbuka',
+      AppSnackBar.error(
+        context,
         'Satu lahan hanya boleh punya satu shift terbuka.',
-        isError: true,
       );
       return;
     }
@@ -140,10 +99,10 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
     final error = await ref.read(shiftsControllerProvider.notifier).open();
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal membuka shift', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
-    _showFeedback('Shift dibuka', '${area.name} mulai dijaga.');
+    AppSnackBar.success(context, '${area.name} mulai dijaga.');
   }
 
   Future<void> _handleCloseShift(Shift shift) async {
@@ -158,72 +117,30 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
         await ref.read(shiftsControllerProvider.notifier).close(shift, note);
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal menutup shift', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
-    _showFeedback('Shift ditutup', '${shift.areaName} selesai dijaga.');
+    AppSnackBar.success(context, '${shift.areaName} selesai dijaga.');
   }
 
-  Future<void> _doLogout() async {
+  Future<void> _handleLogout() async {
+    if (widget.onLogout != null) {
+      widget.onLogout!();
+      return;
+    }
+    // Di luar shell (mis. pengujian widget): konfirmasi + keluar lokal,
+    // lalu kembali ke rute pertama.
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Keluar dari Konsol Pengawas?',
+      message: 'Anda akan kembali ke halaman masuk.',
+    );
+    if (!confirmed || !mounted) return;
     await ref.read(signOutActionProvider)();
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
-  void _handleLogout() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.spSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Keluar dari Konsol Pengawas?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.spInk,
-          ),
-        ),
-        content: const Text(
-          'Anda akan kembali ke halaman masuk.',
-          style: TextStyle(fontSize: 14, color: AppColors.spInk2, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Batal',
-              style: TextStyle(
-                color: AppColors.spInk3,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _doLogout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.spDanger,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Keluar',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -405,14 +322,14 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: ElevatedButton.icon(
+            child: FilledButton.icon(
               onPressed: (_saving || _areas.isEmpty) ? null : _handleOpenShift,
               icon: _saving
                   ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
+                        strokeWidth: 2,
                         color: Colors.white,
                       ),
                     )
@@ -420,14 +337,6 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
               label: const Text(
                 'Buka Shift',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.spPrimary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
               ),
             ),
           ),
@@ -490,7 +399,7 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
             ),
           )
         else if (_error != null)
-          _buildErrorBanner(_error!)
+          ErrorBanner(message: _error!, onRetry: _load)
         else if (open.isEmpty)
           _buildEmptyShiftCard()
         else
@@ -504,91 +413,11 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
     );
   }
 
-  Widget _buildErrorBanner(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.spDangerBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.error_outline_rounded,
-                  size: 18, color: AppColors.spDanger),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Gagal memuat shift',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.spDangerInk,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: 12,
-              height: 1.4,
-              color: AppColors.spDangerInk,
-            ),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Coba lagi'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.spDangerInk,
-              side: const BorderSide(color: AppColors.spDanger),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyShiftCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      decoration: BoxDecoration(
-        color: AppColors.spSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.spBorder),
-      ),
-      child: Column(
-        children: const [
-          Icon(Icons.schedule_rounded, size: 40, color: AppColors.spInk4),
-          SizedBox(height: 10),
-          Text(
-            'Tidak ada shift terbuka',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.spInk,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Buka shift baru untuk mulai mencatat periode jaga.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.spInk3),
-          ),
-        ],
-      ),
+    return const EmptyState(
+      icon: Icons.schedule_rounded,
+      title: 'Tidak ada shift terbuka',
+      message: 'Buka shift baru untuk mulai mencatat periode jaga.',
     );
   }
 
@@ -656,7 +485,7 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
                     size: 14, color: AppColors.spInk2),
                 const SizedBox(width: 6),
                 Text(
-                  'Mulai ${_clock(shift.startedAt)} WIB',
+                  'Mulai ${Formatters.clock(_toLocal(shift.startedAt))} WIB',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -713,10 +542,10 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
   }
 
   Widget _buildOfficerRow(Assignment assignment) {
-    final initials = _initials(assignment.officerName);
+    final initials = NameFormats.initials(assignment.officerName);
     final left = assignment.leftAt == null
         ? null
-        : 'Keluar ${_clock(assignment.leftAt!)} WIB';
+        : 'Keluar ${Formatters.clock(_toLocal(assignment.leftAt!))} WIB';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -761,8 +590,8 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
                 ),
                 Text(
                   left == null
-                      ? 'Bergabung ${_clock(assignment.joinedAt)} WIB'
-                      : 'Bergabung ${_clock(assignment.joinedAt)} WIB • $left',
+                      ? 'Bergabung ${Formatters.clock(_toLocal(assignment.joinedAt))} WIB'
+                      : 'Bergabung ${Formatters.clock(_toLocal(assignment.joinedAt))} WIB • $left',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -777,13 +606,6 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
     );
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
-        .toUpperCase();
-  }
 
   Widget _buildHistorySection() {
     final history = _history;
@@ -814,19 +636,10 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
         ),
         const SizedBox(height: 12),
         if (!_loading && _error == null && history.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-            decoration: BoxDecoration(
-              color: AppColors.spSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.spBorder),
-            ),
-            child: const Text(
-              'Belum ada shift yang ditutup.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppColors.spInk3),
-            ),
+          const EmptyState(
+            icon: Icons.history_rounded,
+            title: 'Belum ada shift yang ditutup',
+            message: 'Riwayat shift yang sudah ditutup akan tampil di sini.',
           )
         else if (!_loading && _error == null)
           Container(
@@ -875,8 +688,8 @@ class _ShiftsPageState extends ConsumerState<ShiftsPage> {
             const Spacer(),
             Text(
               endedAt == null
-                  ? '${_clock(shift.startedAt)} WIB'
-                  : '${_clock(shift.startedAt)} – ${_clock(endedAt)} WIB',
+                  ? '${Formatters.clock(_toLocal(shift.startedAt))} WIB'
+                  : '${Formatters.clock(_toLocal(shift.startedAt))} – ${Formatters.clock(_toLocal(endedAt))} WIB',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
@@ -1076,24 +889,16 @@ class _CloseShiftDialogState extends State<_CloseShiftDialog> {
             ),
           ),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               Navigator.of(context).pop(_controller.text.trim());
             }
           },
-          style: ElevatedButton.styleFrom(
+          style: FilledButton.styleFrom(
             backgroundColor: AppColors.spDanger,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
           ),
-          child: const Text(
-            'Tutup Shift',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
+          child: const Text('Tutup Shift'),
         ),
       ],
     );

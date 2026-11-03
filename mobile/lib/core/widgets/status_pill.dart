@@ -55,7 +55,7 @@ class StatusPill extends StatelessWidget {
       PillTone.warning => (AppColors.spWarnBg, AppColors.spWarn),
       PillTone.danger => (AppColors.spDangerBg, AppColors.spDangerInk),
       PillTone.info => (AppColors.spInfoBg, AppColors.spPrimary600),
-      PillTone.neutral => (const Color(0xFFF1F5F9), AppColors.spSlate),
+      PillTone.neutral => (AppColors.spNeutralBg, AppColors.spSlate),
     };
 
     return Container(

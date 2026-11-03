@@ -92,8 +92,10 @@ class ShiftsController extends Notifier<ShiftsState> {
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
       final areas = await ref.read(supervisorAreaRepositoryProvider).fetchAreas();
+      if (!ref.mounted) return;
       final shifts =
           await ref.read(supervisorShiftRepositoryProvider).fetchShifts();
+      if (!ref.mounted) return;
 
       final ids = areas.map((a) => a.id).toSet();
       final selected = state.selectedAreaId;
@@ -106,6 +108,7 @@ class ShiftsController extends Notifier<ShiftsState> {
         isLoading: false,
       );
     } on Failure catch (failure) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, failure: failure);
     }
   }
@@ -126,7 +129,7 @@ class ShiftsController extends Notifier<ShiftsState> {
     } on Failure catch (failure) {
       return failure.message;
     } finally {
-      state = state.copyWith(isSaving: false);
+      if (ref.mounted) state = state.copyWith(isSaving: false);
     }
   }
 
@@ -142,7 +145,7 @@ class ShiftsController extends Notifier<ShiftsState> {
     } on Failure catch (failure) {
       return failure.message;
     } finally {
-      state = state.copyWith(isSaving: false);
+      if (ref.mounted) state = state.copyWith(isSaving: false);
     }
   }
 }

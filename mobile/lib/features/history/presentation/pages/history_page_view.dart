@@ -12,9 +12,13 @@ import '../widgets/session_detail_sheet.dart';
 
 /// Riwayat sesi parkir: pencarian, saringan status, dan paginasi.
 class HistoryPageView extends ConsumerStatefulWidget {
-  const HistoryPageView({super.key, required this.areaLabel});
+  const HistoryPageView({super.key, required this.areaLabel, this.onLogout});
 
   final String areaLabel;
+
+  /// Keluar dari sesi; diteruskan shell agar tab ini tetap punya jalan
+  /// keluar tanpa menduplikasi logika logout.
+  final VoidCallback? onLogout;
 
   @override
   ConsumerState<HistoryPageView> createState() => _HistoryPageViewState();
@@ -44,10 +48,7 @@ class _HistoryPageViewState extends ConsumerState<HistoryPageView> {
             constraints: const BoxConstraints(maxWidth: 460),
             child: Column(
               children: [
-                const PageAppBar(
-                  title: 'Riwayat Sesi',
-                  trailing: ShiftActiveBadge(),
-                ),
+                _TabAppBar(onLogout: widget.onLogout),
                 Expanded(
                   child: RefreshIndicator(
                     color: AppColors.spPrimary,
@@ -111,6 +112,38 @@ class _HistoryPageViewState extends ConsumerState<HistoryPageView> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Bilah atas tab riwayat: lencana shift + tombol keluar bila disediakan.
+class _TabAppBar extends StatelessWidget {
+  const _TabAppBar({required this.onLogout});
+
+  final VoidCallback? onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return PageAppBar(
+      title: 'Riwayat Sesi',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ShiftActiveBadge(),
+          if (onLogout != null) ...[
+            const SizedBox(width: 4),
+            IconButton(
+              onPressed: onLogout,
+              icon: const Icon(Icons.logout_rounded, size: 20),
+              color: AppColors.spInk3,
+              tooltip: 'Keluar',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+          ],
+        ],
       ),
     );
   }

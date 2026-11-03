@@ -155,7 +155,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField).at(0), 'POS-NEW');
       await tester.enterText(find.byType(TextField).at(1), 'Pos Baru');
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Tambah Lahan'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Tambah Lahan'));
       await tester.pumpAndSettle();
 
       expect(body, {'code': 'POS-NEW', 'name': 'Pos Baru'});
@@ -212,7 +212,7 @@ void main() {
 
       await pumpPage(tester, c, const ShiftsPage());
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Buka Shift'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Buka Shift'));
       await tester.pumpAndSettle();
 
       expect(body, {'parking_area_id': 1});
@@ -240,8 +240,8 @@ void main() {
 
       await pumpPage(tester, c, const ShiftsPage());
 
-      await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Buka Shift'));
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Buka Shift'));
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Buka Shift'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Buka Shift'));
       await tester.pumpAndSettle();
 
       expect(openCalls, 0);
@@ -272,7 +272,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField).at(1), 'Sari');
       await tester.enterText(find.byType(TextField).at(3), 'rahasia123');
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Tambah Petugas'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Tambah Petugas'));
       await tester.pumpAndSettle();
 
       expect(body?['name'], 'Sari');
@@ -304,7 +304,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField).at(1), 'Sari');
       await tester.enterText(find.byType(TextField).at(3), 'rahasia123');
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Tambah Petugas'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Tambah Petugas'));
       await tester.pumpAndSettle();
 
       expect(find.text('Nomor pegawai sudah dipakai.'), findsOneWidget);

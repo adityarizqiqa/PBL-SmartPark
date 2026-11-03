@@ -47,6 +47,7 @@ extension _CheckInStepKtm on _CheckInPageState {
                       ),
                     ),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: const [
                         Icon(Icons.qr_code_scanner, size: 14, color: AppColors.spPrimary600),
                         SizedBox(width: 4),
@@ -665,7 +666,7 @@ extension _CheckInStepKtm on _CheckInPageState {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _currentFormattedTime,
+                              _clockNow,
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -790,11 +791,11 @@ extension _CheckInStepKtm on _CheckInPageState {
 
           // Action Buttons
           ElevatedButton(
-            onPressed: () => _setStep(2), // Move to Step 2: Scan Plat
+            onPressed: _tryNextFromKtm,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.spPrimary,
               foregroundColor: Colors.white,
-              elevation: 2,
+              elevation: 0,
               minimumSize: const Size.fromHeight(56),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -843,7 +844,7 @@ extension _CheckInStepKtm on _CheckInPageState {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _setStep(10), // Switch to Manual NIM input
+                  onPressed: _openManualNim,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.spTint3,
                     foregroundColor: AppColors.spInk,

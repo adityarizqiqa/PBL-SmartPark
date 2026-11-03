@@ -3,8 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/entities/area.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/utils/validators.dart';
+import '../../../../../core/widgets/app_snack_bar.dart';
+import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/error_banner.dart';
 import '../../../../../core/widgets/spv_app_bar.dart';
-import '../../../../auth/presentation/pages/login_page.dart';
+import '../../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../auth/presentation/providers/auth_actions.dart';
 import '../providers/areas_controller.dart';
 
@@ -14,7 +19,11 @@ import '../providers/areas_controller.dart';
 /// Daftar, tambah, ubah nama, dan aktif/nonaktif lahan ditulis ke backend
 /// lewat `/api/areas` memakai token pengawas.
 class AreasPage extends ConsumerStatefulWidget {
-  const AreasPage({super.key});
+  const AreasPage({super.key, this.onLogout});
+
+  /// Disediakan shell agar konfirmasi + sign-out terpusat di satu tempat.
+  /// Null saat halaman dipakai di luar shell (mis. pengujian widget).
+  final VoidCallback? onLogout;
 
   @override
   ConsumerState<AreasPage> createState() => _AreasPageState();
@@ -44,55 +53,12 @@ class _AreasPageState extends ConsumerState<AreasPage> {
   int get _activeCount => _state.activeCount;
   int get _inactiveCount => _state.inactiveCount;
 
-  void _showFeedback(String title, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: isError ? AppColors.spDanger : AppColors.spPrimary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline_rounded : Icons.info_outline,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    message,
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   Future<void> _handleAdd() async {
-    final code = _kodeController.text.trim().toUpperCase();
+    final code = Validators.normalizeCode(_kodeController.text);
     final name = _namaController.text.trim();
 
     if (code.isEmpty || name.isEmpty) {
-      _showFeedback(
-        'Data belum lengkap',
-        'Kode dan nama lahan wajib diisi.',
-        isError: true,
-      );
+      AppSnackBar.error(context, 'Kode dan nama lahan wajib diisi.');
       return;
     }
 
@@ -101,22 +67,21 @@ class _AreasPageState extends ConsumerState<AreasPage> {
         .create(code: code, name: name);
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal menambah lahan', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
     _kodeController.clear();
     _namaController.clear();
     FocusScope.of(context).unfocus();
-    _showFeedback('Lahan ditambahkan', '$name ($code) berhasil ditambahkan.');
+    AppSnackBar.success(context, '$name ($code) berhasil ditambahkan.');
   }
 
   Future<void> _toggleActive(Area area) async {
     final openShifts = _openShiftCounts[area.id] ?? 0;
     if (area.isActive && openShifts > 0) {
-      _showFeedback(
-        'Tidak bisa dinonaktifkan',
+      AppSnackBar.error(
+        context,
         'Tutup $openShifts shift terbuka di lahan ini terlebih dahulu.',
-        isError: true,
       );
       return;
     }
@@ -125,15 +90,11 @@ class _AreasPageState extends ConsumerState<AreasPage> {
         await ref.read(areasControllerProvider.notifier).toggleActive(area);
     if (!mounted) return;
     if (error != null) {
-      _showFeedback(
-        area.isActive ? 'Tidak bisa dinonaktifkan' : 'Gagal mengubah lahan',
-        error,
-        isError: true,
-      );
+      AppSnackBar.error(context, error);
       return;
     }
-    _showFeedback(
-      area.isActive ? 'Lahan dinonaktifkan' : 'Lahan diaktifkan',
+    AppSnackBar.success(
+      context,
       area.isActive
           ? '${area.name} disembunyikan dari daftar pilih saat mulai bertugas.'
           : '${area.name} kembali muncul saat mulai bertugas.',
@@ -146,7 +107,9 @@ class _AreasPageState extends ConsumerState<AreasPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.spSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
         title: Row(
           children: const [
             Icon(Icons.edit_location_alt_outlined,
@@ -175,7 +138,7 @@ class _AreasPageState extends ConsumerState<AreasPage> {
             filled: true,
             fillColor: AppColors.spTint1,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
               borderSide: BorderSide.none,
             ),
           ),
@@ -191,20 +154,9 @@ class _AreasPageState extends ConsumerState<AreasPage> {
               ),
             ),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.spPrimary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Simpan',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+            child: const Text('Simpan'),
           ),
         ],
       ),
@@ -219,72 +171,28 @@ class _AreasPageState extends ConsumerState<AreasPage> {
         await ref.read(areasControllerProvider.notifier).rename(area, trimmed);
     if (!mounted) return;
     if (error != null) {
-      _showFeedback('Gagal memperbarui lahan', error, isError: true);
+      AppSnackBar.error(context, error);
       return;
     }
-    _showFeedback('Lahan diperbarui', 'Nama lahan menjadi "$trimmed".');
+    AppSnackBar.success(context, 'Nama lahan menjadi "$trimmed".');
   }
 
-  Future<void> _doLogout() async {
+  Future<void> _handleLogout() async {
+    if (widget.onLogout != null) {
+      widget.onLogout!();
+      return;
+    }
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Keluar dari Konsol Pengawas?',
+      message: 'Anda akan kembali ke halaman masuk.',
+    );
+    if (!confirmed || !mounted) return;
     await ref.read(signOutActionProvider)();
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
-  void _handleLogout() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.spSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Keluar dari Konsol Pengawas?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.spInk,
-          ),
-        ),
-        content: const Text(
-          'Anda akan kembali ke halaman masuk.',
-          style: TextStyle(fontSize: 14, color: AppColors.spInk2, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Batal',
-              style: TextStyle(
-                color: AppColors.spInk3,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _doLogout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.spDanger,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Keluar',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -497,14 +405,14 @@ class _AreasPageState extends ConsumerState<AreasPage> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: ElevatedButton.icon(
+            child: FilledButton.icon(
               onPressed: _saving ? null : _handleAdd,
               icon: _saving
                   ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
+                        strokeWidth: 2,
                         color: Colors.white,
                       ),
                     )
@@ -512,14 +420,6 @@ class _AreasPageState extends ConsumerState<AreasPage> {
               label: const Text(
                 'Tambah Lahan',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.spPrimary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
               ),
             ),
           ),
@@ -585,15 +485,15 @@ class _AreasPageState extends ConsumerState<AreasPage> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           borderSide: const BorderSide(color: AppColors.spPrimary600, width: 1.5),
         ),
       ),
@@ -634,100 +534,16 @@ class _AreasPageState extends ConsumerState<AreasPage> {
             ),
           )
         else if (_error != null)
-          _buildErrorBanner(_error!)
+          ErrorBanner(message: _error!, onRetry: _load)
         else if (_areas.isEmpty)
-          _buildEmptyState()
+          const EmptyState(
+            icon: Icons.map_outlined,
+            title: 'Belum ada lahan',
+            message: 'Tambahkan lahan parkir pertama lewat formulir di atas.',
+          )
         else
           ..._areas.map(_buildLotCard),
       ],
-    );
-  }
-
-  Widget _buildErrorBanner(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.spDangerBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.spDanger.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.error_outline_rounded,
-                  size: 18, color: AppColors.spDanger),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Gagal memuat lahan',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.spDangerInk,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: 12,
-              height: 1.4,
-              color: AppColors.spDangerInk,
-            ),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Coba lagi'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.spDangerInk,
-              side: const BorderSide(color: AppColors.spDanger),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      decoration: BoxDecoration(
-        color: AppColors.spSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.spBorder),
-      ),
-      child: Column(
-        children: const [
-          Icon(Icons.map_outlined, size: 40, color: AppColors.spInk4),
-          SizedBox(height: 10),
-          Text(
-            'Belum ada lahan',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.spInk,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Tambahkan lahan parkir pertama lewat formulir di atas.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.spInk3),
-          ),
-        ],
-      ),
     );
   }
 
@@ -807,7 +623,7 @@ class _AreasPageState extends ConsumerState<AreasPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: hasOpenShift ? AppColors.spSuccessBg : AppColors.spTint1,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Row(
               children: [
@@ -902,7 +718,7 @@ class _AreasPageState extends ConsumerState<AreasPage> {
             height: 28,
             decoration: BoxDecoration(
               color: AppColors.spTint3,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: const Icon(
               Icons.info_outline,

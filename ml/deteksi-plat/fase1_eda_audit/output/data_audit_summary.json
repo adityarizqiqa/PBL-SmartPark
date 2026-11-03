@@ -1,0 +1,25 @@
+{
+  "dataset_name": "linkgish/indonesian-plate-number-from-multi-sources",
+  "detection_dataset": {
+    "total_images_in_json": 1377,
+    "total_annotations": 2128,
+    "invalid_boxes_count": 0,
+    "negative_images_count": 5,
+    "mean_bbox_aspect_ratio": 2.9730412681917344,
+    "mean_relative_area": 0.020128234315137616
+  },
+  "ocr_dataset": {
+    "total_samples": 1863,
+    "null_labels_count": 0,
+    "illegal_chars_detected": [],
+    "char_length_stats": {
+      "min": 4,
+      "median": 7.0,
+      "max": 9
+    }
+  },
+  "leakage_audit": {
+    "sampled_visual_matches": 0,
+    "matches_preview": []
+  }
+}

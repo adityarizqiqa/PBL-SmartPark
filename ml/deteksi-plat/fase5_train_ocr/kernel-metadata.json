@@ -1,0 +1,18 @@
+{
+  "id": "singgihwahyupermana/recognition-indonesian-plate-train-ocr",
+  "title": "Recognition Indonesian Plate Train OCR",
+  "code_file": "recognition-indonesian-plate-train-ocr.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [],
+  "kernel_sources": [
+    "singgihwahyupermana/recognition-indonesian-plate-prep-ocr"
+  ],
+  "competition_sources": [],
+  "model_sources": []
+}

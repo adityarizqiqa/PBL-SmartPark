@@ -1,0 +1,18 @@
+{
+  "id": "singgihwahyupermana/detection-indonesian-plate-export-tflite",
+  "title": "Detection Indonesian Plate Export TFLite",
+  "code_file": "detection-indonesian-plate-export-tflite.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [],
+  "kernel_sources": [
+    "singgihwahyupermana/detection-indonesian-plate-train-detector"
+  ],
+  "competition_sources": [],
+  "model_sources": []
+}

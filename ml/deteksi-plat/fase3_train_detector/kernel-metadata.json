@@ -1,0 +1,20 @@
+{
+  "id": "singgihwahyupermana/detection-indonesian-plate-train-detector",
+  "title": "Detection Indonesian Plate Train Detector",
+  "code_file": "detection-indonesian-plate-train-detector.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [
+    "linkgish/indonesian-plate-number-from-multi-sources"
+  ],
+  "kernel_sources": [
+    "singgihwahyupermana/detection-indonesian-plate-prep-detector"
+  ],
+  "competition_sources": [],
+  "model_sources": []
+}

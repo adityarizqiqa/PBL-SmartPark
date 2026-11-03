@@ -1,0 +1,8 @@
+{
+  "target_height": 32,
+  "target_width": 128,
+  "channels": 1,
+  "color_space": "GRAYSCALE",
+  "normalization": "[0.0, 1.0]",
+  "resize_mode": "DIRECT_STRETCH_32x128"
+}

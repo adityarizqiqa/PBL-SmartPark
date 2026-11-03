@@ -1,0 +1,30 @@
+{
+  "total_vocabulary": 37,
+  "image_dimension": [
+    32,
+    128,
+    1
+  ],
+  "subsets": {
+    "train": {
+      "total_samples": 2482,
+      "clean_count": 1484,
+      "simulated_count": 998
+    },
+    "val": {
+      "total_samples": 200
+    },
+    "test": {
+      "total_samples": 179
+    }
+  },
+  "artifacts": [
+    "vocab.json",
+    "ocr_preprocess_config.json",
+    "train_ocr.csv",
+    "val_ocr.csv",
+    "test_ocr.csv",
+    "verification_ocr_preprocessed.png",
+    "ocr_dataset.zip"
+  ]
+}

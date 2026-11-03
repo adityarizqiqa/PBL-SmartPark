@@ -1,0 +1,6 @@
+path: /kaggle/input/notebooks/singgihwahyupermana/indonesian-plate-prep-detector/yolo_dataset
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: license_plate

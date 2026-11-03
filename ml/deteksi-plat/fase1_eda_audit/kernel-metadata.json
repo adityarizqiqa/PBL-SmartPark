@@ -1,0 +1,18 @@
+{
+  "id": "singgihwahyupermana/indonesian-plate-eda-and-audit",
+  "title": "Indonesian Plate EDA and Audit",
+  "code_file": "indonesian-plate-eda-and-audit.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [
+    "linkgish/indonesian-plate-number-from-multi-sources"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}

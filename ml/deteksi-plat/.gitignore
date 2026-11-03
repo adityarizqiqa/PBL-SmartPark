@@ -1,0 +1,17 @@
+# Gambar audit/val/train — jangan diupload (3000+ file, bikin push bengkak).
+# File hasil training (.pt, .tflite, .onnx) tetap ikut.
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.webp
+*.gif
+*.tif
+*.tiff
+*.svg
+
+# Sampah runtime / cache notebook
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.log

@@ -1,0 +1,18 @@
+{
+  "id": "singgihwahyupermana/detection-indonesian-plate-label-audit",
+  "title": "Detection Indonesian Plate Label Audit",
+  "code_file": "detection-indonesian-plate-label-audit.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "keywords": [],
+  "dataset_sources": [
+    "linkgish/indonesian-plate-number-from-multi-sources"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}

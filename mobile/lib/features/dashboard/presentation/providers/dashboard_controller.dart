@@ -43,19 +43,28 @@ class DashboardState {
 }
 
 class DashboardController extends Notifier<DashboardState> {
+  bool _disposed = false;
+
   @override
   DashboardState build() {
+    _disposed = false;
+    ref.onDispose(() => _disposed = true);
     Future.microtask(refresh);
     return const DashboardState(isLoading: true);
   }
 
   Future<void> refresh() async {
+    if (_disposed) return;
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
       final summary = await ref.read(getHomeSummaryProvider)();
+      if (_disposed) return;
       state = DashboardState(summary: summary);
     } on Failure catch (failure) {
+      if (_disposed) return;
       state = state.copyWith(isLoading: false, failure: failure);
+    } catch (_) {
+      // Abaikan jika controller sudah dibuang saat request berjalan
     }
   }
 }

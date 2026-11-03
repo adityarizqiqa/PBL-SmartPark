@@ -57,23 +57,47 @@ class VehiclesState {
 }
 
 class VehiclesController extends Notifier<VehiclesState> {
+  bool _disposed = false;
+
   @override
   VehiclesState build() {
+    _disposed = false;
+    ref.onDispose(() => _disposed = true);
     Future.microtask(refresh);
     return const VehiclesState();
   }
 
   void search(String query) {
+    if (_disposed) return;
     state = state.copyWith(query: query);
   }
 
+  void addVehicle(ActiveVehicle vehicle) {
+    if (_disposed) return;
+    state = state.copyWith(
+      all: [vehicle, ...state.all.where((v) => v.id != vehicle.id)],
+    );
+  }
+
+  void removeVehicle(int sessionId) {
+    if (_disposed) return;
+    state = state.copyWith(
+      all: state.all.where((v) => v.id != sessionId).toList(),
+    );
+  }
+
   Future<void> refresh() async {
+    if (_disposed) return;
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
       final vehicles = await ref.read(getActiveVehiclesProvider)();
+      if (_disposed) return;
       state = state.copyWith(all: vehicles, isLoading: false);
     } on Failure catch (failure) {
+      if (_disposed) return;
       state = state.copyWith(isLoading: false, failure: failure);
+    } catch (_) {
+      // Abaikan jika controller sudah dibuang saat request berjalan
     }
   }
 }

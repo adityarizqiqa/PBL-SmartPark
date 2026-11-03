@@ -109,6 +109,7 @@ extension _CheckOutDialogs on _CheckOutPageState {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
+                  widget.onFinished?.call();
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 style: ElevatedButton.styleFrom(

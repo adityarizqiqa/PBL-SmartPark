@@ -17,11 +17,12 @@ final signOutActionProvider = Provider<Future<void> Function()>((ref) {
       // Sesi lokal tetap dibuang meski server tidak terjangkau.
     }
     ref.read(sessionStoreProvider).clear();
+    resetSessionScopedState(ref);
   };
 });
 
 /// Mengakhiri penugasan jaga lalu membersihkan sesi.
- ///
+///
 /// Mengembalikan `null` bila aman keluar (server tutup shift, atau sesi
 /// sudah mati di server). Mengembalikan [Failure] bila keadaan server tidak
 /// pasti (jaringan/timeout/kesalahan server): pemanggil WAJIB menahan
@@ -30,24 +31,26 @@ final signOutActionProvider = Provider<Future<void> Function()>((ref) {
 /// sehingga petugas terkunci ("masih bertugas di shift lain") saat masuk lagi.
 final leaveShiftActionProvider =
     Provider<Future<Failure?> Function(String)>((ref) {
-   return (note) async {
-     try {
-       await ref.read(authRepositoryProvider).leaveShift(note: note);
+  return (note) async {
+    try {
+      await ref.read(authRepositoryProvider).leaveShift(note: note);
       ref.read(sessionStoreProvider).clear();
+      resetSessionScopedState(ref);
       return null;
-     } on Failure catch (failure) {
+    } on Failure catch (failure) {
       if (failure is UnauthorizedFailure ||
           failure is NotFoundFailure ||
           failure is ConflictFailure) {
         // Token/sesi sudah mati di server (mis. shift ditutup paksa
         // pengawas): tidak ada yang perlu ditutup, aman keluar lokal.
         ref.read(sessionStoreProvider).clear();
+        resetSessionScopedState(ref);
         return null;
       }
       return failure;
-     }
-   };
- });
+    }
+  };
+});
 
 /// `true` bila belum ada token sama sekali.
 final hasSessionProvider = Provider<bool>((ref) {

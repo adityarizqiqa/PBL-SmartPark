@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'core/di/providers.dart';
 import 'core/network/api_client.dart';
 import 'core/session/officer_identity.dart';
+import 'core/session/session_scope.dart';
 import 'core/utils/formatters.dart';
 import 'core/widgets/app_bottom_nav.dart';
 import 'core/theme/app_theme.dart';
@@ -217,7 +218,13 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
   }
 
   void _push(Widget page) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => page))
+        .then((_) {
+      if (mounted) {
+        resetSessionScopedState(ref);
+      }
+    });
   }
 
   CheckOutPage _checkOutPage({ActiveVehicle? vehicle}) {
@@ -233,6 +240,9 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
       checkInPlate: vehicle?.plateIn ?? '',
       checkInTime:
           vehicle == null ? '' : Formatters.time(vehicle.checkedInAt),
+      onFinished: () {
+        if (mounted) resetSessionScopedState(ref);
+      },
     );
   }
 
@@ -273,6 +283,9 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
           officerRole: identity?.roleLabel ?? 'Petugas Gerbang',
           isSupervisor: identity?.isSupervisor ?? false,
           parkingLot: identity?.areaLabel ?? '',
+          onFinished: () {
+            if (mounted) resetSessionScopedState(ref);
+          },
         ),
       ),
       onOpenCheckOut: () => _push(_checkOutPage()),

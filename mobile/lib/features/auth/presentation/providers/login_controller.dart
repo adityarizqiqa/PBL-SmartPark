@@ -4,11 +4,14 @@ import '../../../../core/di/providers.dart';
 import '../../../../core/entities/area.dart';
 import '../../../../core/entities/officer.dart';
 import '../../../../core/failures/failure.dart';
+import '../../../../core/session/session_scope.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/sign_in.dart';
+
+export '../../../../core/session/session_scope.dart' show resetSessionScopedState;
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(
@@ -164,6 +167,7 @@ class LoginController extends Notifier<LoginState> {
         area: area,
       );
       _applySession(result);
+      resetSessionScopedState(ref);
       state = state.copyWith(isSubmitting: false);
       return result;
     } on Failure catch (failure) {
@@ -195,6 +199,7 @@ class LoginController extends Notifier<LoginState> {
       // Keluar tetap dilanjutkan; token lokal dibuang apa pun hasilnya.
     }
     ref.read(sessionStoreProvider).clear();
+    resetSessionScopedState(ref);
     state = const LoginState();
   }
 }

@@ -8,6 +8,7 @@ import 'camera_capture_page.dart';
 import '../../../../core/entities/lookup_result.dart';
 import '../../../../core/entities/parking_session.dart';
 import '../../../../core/failures/failure.dart';
+import '../../../../core/session/session_scope.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/providers.dart';
 import '../providers/session_providers.dart';
@@ -29,6 +30,7 @@ class CheckOutPage extends ConsumerStatefulWidget {
   final String checkInPlate;
   final String checkInTime;
   final SessionDetail? initialSession;
+  final VoidCallback? onFinished;
 
   const CheckOutPage({
     super.key,
@@ -40,6 +42,7 @@ class CheckOutPage extends ConsumerStatefulWidget {
     this.checkInPlate = 'N 1234 ABC',
     this.checkInTime = '07:32 WIB',
     this.initialSession,
+    this.onFinished,
   });
 
   @override
@@ -334,6 +337,9 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
       if (!mounted) return;
 
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
+
       setState(() {
         _session = closedSession;
         _isSubmitting = false;
@@ -417,6 +423,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
           .read(sessionRepositoryProvider)
           .reject(_session!.id, note: note);
       if (!mounted) return;
+      resetSessionScopedState(ref);
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -444,6 +451,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
           .read(sessionRepositoryProvider)
           .voidSession(_session!.id, note: note);
       if (!mounted) return;
+      resetSessionScopedState(ref);
       setState(() {
         _isSubmitting = false;
         _session = null;

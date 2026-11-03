@@ -9,6 +9,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../core/entities/parking_session.dart';
 import '../../../../core/failures/failure.dart';
+import '../../../../core/session/session_scope.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/session_providers.dart';
 
@@ -30,6 +31,7 @@ class CheckInPage extends ConsumerStatefulWidget {
   final bool isSupervisor;
   final String parkingLot;
   final int initialStep; // 1: Scan KTM, 2: Scan Plat, 3: Konfirmasi
+  final VoidCallback? onFinished;
 
   const CheckInPage({
     super.key,
@@ -38,6 +40,7 @@ class CheckInPage extends ConsumerStatefulWidget {
     this.isSupervisor = false,
     this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
     this.initialStep = 1,
+    this.onFinished,
   });
 
   @override
@@ -348,6 +351,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       }
       final cameras = await availableCameras();
       if (!mounted) return;
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       if (cameras.isEmpty) {
         setState(() => _plateCamError = 'Tidak ada kamera di perangkat ini.');
         return;
@@ -363,6 +369,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       );
       await controller.initialize();
       if (!mounted) return;
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       setState(() {
         _plateCamera = controller;
         _plateCamReady = true;
@@ -370,6 +379,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       });
     } catch (_) {
       if (!mounted) return;
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       setState(() {
         _plateCamReady = false;
         _plateCamError = 'Kamera tidak tersedia. Ketik plat secara manual.';
@@ -386,6 +398,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       final file = await camera.takePicture();
       await camera.pausePreview();
       if (!mounted) return;
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       setState(() {
         _platePhotoPath = file.path;
         _platePreviewing = true;
@@ -393,6 +408,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       });
     } catch (_) {
       if (!mounted) return;
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       setState(() => _plateCapturing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal mengambil foto. Coba lagi.')),
@@ -487,6 +505,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
 
       if (!mounted) return;
 
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
+
       setState(() {
         _createdSession = session;
         _isSubmitting = false;
@@ -495,6 +516,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       _finishCheckInSuccess(session);
     } on Failure catch (failure) {
       if (!mounted) return;
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       setState(() {
         _isSubmitting = false;
         _errorMessage = failure.message.isNotEmpty
@@ -666,6 +690,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
+                      widget.onFinished?.call();
                       Navigator.of(context).popUntil((route) => route.isFirst);
                     },
                     style: ElevatedButton.styleFrom(
@@ -800,6 +825,10 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
             note: note,
           );
       if (!mounted) return;
+      resetSessionScopedState(ref);
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       setState(() {
         _isSubmitting = false;
         _createdSession = null;
@@ -813,6 +842,9 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
       );
     } on Failure catch (failure) {
       if (!mounted) return;
+
+      resetSessionScopedState(ref);
+      widget.onFinished?.call();
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

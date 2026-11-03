@@ -74,56 +74,74 @@ class HistoryState {
 /// Mengatur pencarian, saringan status, dan perpindahan halaman riwayat.
 class HistoryController extends Notifier<HistoryState> {
   Timer? _debounce;
+  bool _disposed = false;
 
   @override
   HistoryState build() {
-    ref.onDispose(() => _debounce?.cancel());
+    _disposed = false;
+    ref.onDispose(() {
+      _disposed = true;
+      _debounce?.cancel();
+    });
     Future.microtask(refresh);
     return const HistoryState();
   }
 
   void setStatusFilter(HistoryStatusFilter filter) {
+    if (_disposed) return;
     state = state.copyWith(statusFilter: filter);
   }
 
   void setPeriod(HistoryPeriod period) {
+    if (_disposed) return;
     state = state.copyWith(period: period);
   }
 
   /// Menunda permintaan 400 ms agar setiap ketikan tidak memanggil backend.
   void search(String query) {
+    if (_disposed) return;
     state = state.copyWith(query: query);
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      _load(offset: 0);
+      if (!_disposed) _load(offset: 0);
     });
   }
 
   void nextPage() {
+    if (_disposed) return;
     final page = state.page;
     if (page == null || !page.hasNext) return;
     _load(offset: page.offset + page.limit);
   }
 
   void previousPage() {
+    if (_disposed) return;
     final page = state.page;
     if (page == null || !page.hasPrevious) return;
     final offset = (page.offset - page.limit).clamp(0, page.total);
     _load(offset: offset);
   }
 
-  Future<void> refresh() => _load(offset: state.page?.offset ?? 0);
+  Future<void> refresh() {
+    if (_disposed) return Future.value();
+    return _load(offset: state.page?.offset ?? 0);
+  }
 
   Future<void> _load({required int offset}) async {
+    if (_disposed) return;
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
       final page = await ref.read(getHistoryPageProvider)(
         offset: offset,
         query: state.query,
       );
+      if (_disposed) return;
       state = state.copyWith(page: page, isLoading: false);
     } on Failure catch (failure) {
+      if (_disposed) return;
       state = state.copyWith(isLoading: false, failure: failure);
+    } catch (_) {
+      // Abaikan jika controller sudah dibuang saat request berjalan
     }
   }
 }

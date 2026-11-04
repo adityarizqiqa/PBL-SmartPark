@@ -70,7 +70,7 @@ extension _CheckOutVerification on _CheckOutPageState {
                             if (_isPlateMatched) {
                               _outPlateController.text = 'N 1234 ABD';
                             } else {
-                              _outPlateController.text = _checkInPlate;
+                              _outPlateController.text = _checkInPlate != '-' ? _checkInPlate : 'N 1234 ABC';
                             }
                           });
                         },

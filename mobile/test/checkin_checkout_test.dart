@@ -257,6 +257,14 @@ void main() {
         ),
       ));
 
+      // Sebelum input plat nomor keluar, status belum sesuai dan placeholder foto tampil
+      expect(find.text('PERLU VERIFIKASI'), findsOneWidget);
+      expect(find.text('Ketuk untuk foto plat'), findsOneWidget);
+
+      // Petugas menginput plat nomor keluar yang cocok
+      await tester.enterText(find.byType(TextField).first, 'N 1234 ABC');
+      await tester.pumpAndSettle();
+
       expect(find.text('SESUAI'), findsOneWidget);
 
       // Centang KTM
@@ -320,6 +328,10 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: _wrap(client, CheckOutPage()),
       ));
+
+      // Input plat nomor untuk pencarian kandidat
+      await tester.enterText(find.byType(TextField).first, 'N 1234');
+      await tester.pumpAndSettle();
 
       // Lakukan pencarian
       await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Cari'));

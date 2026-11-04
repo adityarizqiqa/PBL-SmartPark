@@ -285,20 +285,39 @@ extension _CheckOutLookup on _CheckOutPageState {
                   ),
                 ),
                 const SizedBox(width: 8),
-                InkWell(
-                  onTap: () {
-                    rebuild(() {
-                      _showNimSearch = !_showNimSearch;
-                    });
-                  },
-                  child: Text(
-                    _showNimSearch ? 'Sembunyikan NIM' : 'Cari via NIM',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.spPrimary600,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_session != null) ...[
+                      InkWell(
+                        onTap: _clearSessionState,
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.spDanger,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    InkWell(
+                      onTap: () {
+                        rebuild(() {
+                          _showNimSearch = !_showNimSearch;
+                        });
+                      },
+                      child: Text(
+                        _showNimSearch ? 'Sembunyikan NIM' : 'Cari via NIM',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.spPrimary600,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

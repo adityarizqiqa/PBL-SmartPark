@@ -36,9 +36,9 @@ class CheckOutPage extends ConsumerStatefulWidget {
     this.officerRole = 'Petugas Gerbang',
     this.isSupervisor = false,
     this.parkingLot = 'POS-UTAMA • Pos Parkir Utama',
-    this.nim = '244107020204',
-    this.checkInPlate = 'N 1234 ABC',
-    this.checkInTime = '07:32 WIB',
+    this.nim = '',
+    this.checkInPlate = '',
+    this.checkInTime = '',
     this.initialSession,
   });
 
@@ -73,50 +73,45 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   @override
   void initState() {
     super.initState();
-    _outPlateController = TextEditingController(text: widget.checkInPlate);
+    _outPlateController = TextEditingController();
+    _outPlateController.addListener(_onOutPlateChanged);
     _nimFallbackController = TextEditingController(text: widget.nim);
+
+    _outPhotoPath = null;
+    _inPhotoBytes = null;
+    _ktmChecked = false;
+    _showManualForm = false;
 
     if (widget.initialSession != null) {
       _session = widget.initialSession;
       _matchMethod = _session!.matchMethod ?? 'plate_exact';
+      if (_nimFallbackController.text.isEmpty && _session!.nim.isNotEmpty) {
+        _nimFallbackController.text = _session!.nim;
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadInPhoto());
     } else {
-      // Inisialisasi awal fallback agar layar langsung tampil siap uji/verifikasi
-      _session = SessionDetail(
-        id: 89,
-        nim: widget.nim,
-        plateIn: widget.checkInPlate,
-        plateOut: null,
-        checkedInAt: DateTime.now().subtract(const Duration(hours: 3, minutes: 24)),
-        checkedOutAt: null,
-        status: 'active',
-        matchMethod: 'plate_exact',
-        verificationNote: null,
-        plateInPhotoPath: null,
-        plateOutPhotoPath: null,
-        areaId: 1,
-        areaName: widget.parkingLot,
-        checkedInBy: const SessionOfficer(
-          assignmentId: 1,
-          officerId: 1,
-          officerName: 'Budi Santoso',
-        ),
-        checkedOutBy: null,
-        events: const [],
-      );
-      _matchMethod = 'plate_exact';
+      _session = null;
+      _matchMethod = null;
 
-      // Bila ada token sesi shift aktif, lakukan lookup otomatis ke backend
-      if (ref.read(sessionStoreProvider).shiftToken != null) {
+      // Bila ada plat yang diteruskan dan token shift aktif, lakukan lookup backend riil
+      final plateToLookup = widget.checkInPlate.trim();
+      if (plateToLookup.isNotEmpty &&
+          ref.read(sessionStoreProvider).shiftToken != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _performLookup(widget.checkInPlate, nim: widget.nim);
+          _performLookup(plateToLookup,
+              nim: widget.nim.isNotEmpty ? widget.nim : null);
         });
       }
     }
   }
 
+  void _onOutPlateChanged() {
+    setState(() {});
+  }
+
   @override
   void dispose() {
+    _outPlateController.removeListener(_onOutPlateChanged);
     _outPlateController.dispose();
     _nimFallbackController.dispose();
     _manualNoteController.dispose();
@@ -126,15 +121,17 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
   String get _currentCheckOutPlate => _outPlateController.text.trim().toUpperCase();
 
-  String get _checkInPlate => _session?.plateIn ?? widget.checkInPlate;
+  String get _checkInPlate =>
+      _session?.plateIn ?? (widget.checkInPlate.isNotEmpty ? widget.checkInPlate : '-');
 
-  String get _currentNim => _session?.nim ?? widget.nim;
+  String get _currentNim =>
+      _session?.nim ?? (widget.nim.isNotEmpty ? widget.nim : '-');
 
   String get _checkInTime {
     if (_session != null) {
       return _formatTime(_session!.checkedInAt);
     }
-    return widget.checkInTime;
+    return widget.checkInTime.isNotEmpty ? widget.checkInTime : '-';
   }
 
   String get _checkOutTime => _formatTime(DateTime.now());
@@ -147,7 +144,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   }
 
   String get _duration {
-    if (_session == null) return '0m';
+    if (_session == null) return '-';
     final diff = DateTime.now().difference(_session!.checkedInAt.toLocal());
     final totalMinutes = diff.inMinutes;
     if (totalMinutes <= 0) return '0m';
@@ -161,13 +158,15 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     if (_session != null) {
       return 'ID: PRK-${_session!.id.toString().padLeft(6, '0')}';
     }
-    return 'ID: PRK-240502-089';
+    return '-';
   }
 
   bool get _isPlateMatched {
     if (_session == null) return false;
-    final inP = _session!.plateIn.replaceAll(' ', '').toUpperCase();
     final outP = _currentCheckOutPlate.replaceAll(' ', '').toUpperCase();
+    if (outP.isEmpty) return false;
+    final inP = _session!.plateIn.replaceAll(' ', '').toUpperCase();
+    if (inP.isEmpty) return false;
     return inP == outP;
   }
 
@@ -184,14 +183,13 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
       _isSearching = true;
       _lookupMessage = null;
       _candidates = const [];
+      _outPhotoPath = null;
+      _inPhotoBytes = null;
+      _ktmChecked = false;
+      _showManualForm = false;
     });
 
     try {
-      final query = <String, dynamic>{'plate': cleanPlate};
-      if (nim != null && nim.trim().isNotEmpty) {
-        query['nim'] = nim.trim();
-      }
-
       final result = await ref.read(sessionRepositoryProvider).lookup(
             plate: cleanPlate,
             nim: nim,
@@ -204,6 +202,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
           _session = result.session;
           _candidates = const [];
           _lookupMessage = null;
+          _outPhotoPath = null;
           _nimFallbackController.text = result.session!.nim;
           _loadInPhoto();
         } else if (result.candidates.isNotEmpty) {
@@ -246,6 +245,9 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
         _candidates = const [];
         _isSearching = false;
         _showManualForm = true;
+        _outPhotoPath = null;
+        _ktmChecked = false;
+        _nimFallbackController.text = detail.nim;
       });
       _loadInPhoto();
     } on Failure catch (failure) {
@@ -354,7 +356,6 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     }
   }
 
-
   void _handleManualClearance() {
     if (_manualNoteController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -409,6 +410,26 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     );
   }
 
+  /// Reset penuh terhadap seluruh form dan status sesi check-out.
+  void _clearSessionState() {
+    setState(() {
+      _session = null;
+      _matchMethod = null;
+      _candidates = const [];
+      _lookupMessage = null;
+      _outPhotoPath = null;
+      _inPhotoBytes = null;
+      _outPlateController.clear();
+      _nimFallbackController.clear();
+      _manualNoteController.clear();
+      _actionNoteController.clear();
+      _ktmChecked = false;
+      _isSearching = false;
+      _isSubmitting = false;
+      _showManualForm = false;
+      _showNimSearch = false;
+    });
+  }
 
   Future<void> _submitReject(String note) async {
     setState(() => _isSubmitting = true);
@@ -436,7 +457,6 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     }
   }
 
-
   Future<void> _submitVoid(String note) async {
     setState(() => _isSubmitting = true);
     try {
@@ -444,10 +464,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
           .read(sessionRepositoryProvider)
           .voidSession(_session!.id, note: note);
       if (!mounted) return;
-      setState(() {
-        _isSubmitting = false;
-        _session = null;
-      });
+      _clearSessionState();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.spSuccess,
@@ -523,22 +540,6 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     );
   }
 
-  /// 1. Canonical App Bar
-
-  /// 2. Mode Tester Selector
-
-  /// Lookup search input card
-
-  /// Candidates list when plate_similar returns matches
-
-  /// Lookup message or error banner
-
-  /// 3. Live Status Highlight Banner
-
-  /// 4. Side-by-Side Visual & Plate Comparison Card
-
-  /// 5. Session & Identity Metadata (Glance Zone)
-
   Widget _buildMetaCell(
     String label,
     String value, {
@@ -588,10 +589,4 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
       },
     );
   }
-
-  /// Optional Manual Verification Card (13-verifikasi-manual-petugas.html)
-
-  /// 6. Action Controls (Checkbox & Confirm Button)
-
-  /// Canonical Bottom Navigation
 }

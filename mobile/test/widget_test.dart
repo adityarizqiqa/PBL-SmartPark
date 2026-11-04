@@ -351,6 +351,14 @@ void main() {
     // Verify CheckOut screen elements
     expect(find.text('Verifikasi Check-Out'), findsWidgets);
     expect(find.text('POS KELUAR'), findsOneWidget);
+    expect(find.text('PERLU VERIFIKASI'), findsOneWidget);
+
+    // Input plat keluar dan cari sesi
+    await tester.enterText(find.byType(TextField).first, 'N 1234 ABC');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Cari'));
+    await tester.pumpAndSettle();
+
     expect(find.text('SESUAI'), findsOneWidget);
     expect(find.text('PERBANDINGAN PLAT'), findsOneWidget);
 

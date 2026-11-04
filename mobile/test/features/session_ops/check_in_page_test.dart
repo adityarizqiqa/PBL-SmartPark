@@ -107,4 +107,46 @@ void main() {
     expect(find.text('Check-In Berhasil!'), findsNothing);
     expect(find.text('Plat ini sudah punya sesi aktif.'), findsWidgets);
   });
+
+  testWidgets(
+      'transisi antar step 1 -> step 2 -> step 1 berjalan mulus dan me-reset scanner',
+      (tester) async {
+    await pumpCheckIn(
+      tester,
+      MockClient((request) async => notFound()),
+    );
+
+    // Di Step 1
+    expect(find.text('LANGKAH 1 DARI 3'), findsOneWidget);
+    expect(find.text('Scan KTM'), findsOneWidget);
+
+    // Pindah ke Step 2
+    await tester.ensureVisible(find.text('Lanjut Scan Plat'));
+    await tester.tap(find.text('Lanjut Scan Plat'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Langkah 2 dari 3'), findsOneWidget);
+
+    // Kembali ke Step 1 via tombol back AppBar
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Kembali di Step 1
+    expect(find.text('LANGKAH 1 DARI 3'), findsOneWidget);
+    expect(find.text('Scan KTM'), findsOneWidget);
+  });
+
+  testWidgets('tombol Pindai Ulang dapat ditekan tanpa crash',
+      (tester) async {
+    await pumpCheckIn(
+      tester,
+      MockClient((request) async => notFound()),
+    );
+
+    await tester.ensureVisible(find.text('Pindai Ulang'));
+    await tester.tap(find.text('Pindai Ulang'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Scan KTM'), findsOneWidget);
+  });
 }

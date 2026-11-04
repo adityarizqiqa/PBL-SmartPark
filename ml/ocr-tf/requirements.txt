@@ -1,0 +1,10 @@
+# TensorFlow (CPU) — model training, TFLite conversion, inference
+tensorflow-cpu>=2.15,<2.17
+
+# Image I/O and processing
+opencv-python-headless>=4.9
+numpy>=1.24,<2.0
+Pillow>=10.0
+
+# Detection (hanya untuk smoke test integrasi YOLO — tidak wajib untuk OCR saja)
+ultralytics>=8.3

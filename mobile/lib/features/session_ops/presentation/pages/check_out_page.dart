@@ -69,6 +69,8 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   bool _showNimSearch = false;
   String? _outPhotoPath;
   Uint8List? _inPhotoBytes;
+  bool _isLoadingInPhoto = false;
+  bool _inPhotoLoadFailed = false;
 
   @override
   void initState() {
@@ -79,6 +81,8 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
     _outPhotoPath = null;
     _inPhotoBytes = null;
+    _isLoadingInPhoto = false;
+    _inPhotoLoadFailed = false;
     _ktmChecked = false;
     _showManualForm = false;
 
@@ -87,6 +91,10 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
       _matchMethod = _session!.matchMethod ?? 'plate_exact';
       if (_nimFallbackController.text.isEmpty && _session!.nim.isNotEmpty) {
         _nimFallbackController.text = _session!.nim;
+      }
+      final path = _session!.plateInPhotoPath?.trim();
+      if (path != null && path.isNotEmpty) {
+        _isLoadingInPhoto = true;
       }
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadInPhoto());
     } else {
@@ -185,6 +193,8 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
       _candidates = const [];
       _outPhotoPath = null;
       _inPhotoBytes = null;
+      _isLoadingInPhoto = false;
+      _inPhotoLoadFailed = false;
       _ktmChecked = false;
       _showManualForm = false;
     });
@@ -246,6 +256,9 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
         _isSearching = false;
         _showManualForm = true;
         _outPhotoPath = null;
+        _inPhotoBytes = null;
+        _isLoadingInPhoto = false;
+        _inPhotoLoadFailed = false;
         _ktmChecked = false;
         _nimFallbackController.text = detail.nim;
       });
@@ -279,19 +292,70 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
   /// Mengambil snapshot plat saat masuk untuk perbandingan visual.
   ///
-  /// Gagal (404/foto belum ada) tidak menghalangi alur check-out; panel
-  /// cukup menampilkan ikon placeholder.
+  /// Menangani state loading, foto tidak tersedia (null/kosong), dan kegagalan muat.
   Future<void> _loadInPhoto() async {
     final session = _session;
-    if (session == null || session.plateInPhotoPath == null) return;
+    if (session == null) {
+      if (mounted) {
+        setState(() {
+          _inPhotoBytes = null;
+          _isLoadingInPhoto = false;
+          _inPhotoLoadFailed = false;
+        });
+      }
+      return;
+    }
+
+    final photoPath = session.plateInPhotoPath?.trim();
+    if (photoPath == null || photoPath.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _inPhotoBytes = null;
+          _isLoadingInPhoto = false;
+          _inPhotoLoadFailed = false;
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _isLoadingInPhoto = true;
+      _inPhotoLoadFailed = false;
+      _inPhotoBytes = null;
+    });
+
     try {
       final bytes = await ref
           .read(sessionRepositoryProvider)
           .sessionPhoto(session.id, 'in');
       if (!mounted) return;
-      setState(() => _inPhotoBytes = bytes);
+      if (bytes == null || bytes.isEmpty) {
+        setState(() {
+          _inPhotoBytes = null;
+          _isLoadingInPhoto = false;
+          _inPhotoLoadFailed = true;
+        });
+        return;
+      }
+      setState(() {
+        _inPhotoBytes = bytes;
+        _isLoadingInPhoto = false;
+        _inPhotoLoadFailed = false;
+      });
     } on Failure {
-      // Biarkan placeholder; bukan kesalahan yang menghambat check-out.
+      if (!mounted) return;
+      setState(() {
+        _inPhotoBytes = null;
+        _isLoadingInPhoto = false;
+        _inPhotoLoadFailed = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _inPhotoBytes = null;
+        _isLoadingInPhoto = false;
+        _inPhotoLoadFailed = true;
+      });
     }
   }
 
@@ -419,6 +483,8 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
       _lookupMessage = null;
       _outPhotoPath = null;
       _inPhotoBytes = null;
+      _isLoadingInPhoto = false;
+      _inPhotoLoadFailed = false;
       _outPlateController.clear();
       _nimFallbackController.clear();
       _manualNoteController.clear();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -431,6 +432,134 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(voidCalled, isTrue);
+    });
+
+    testWidgets('Foto check-in tidak tersedia (null) menampilkan teks dan ikon alternatif yang jelas',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final client = MockClient((request) async => http.Response('{}', 404));
+
+      final json = sampleSessionJson(id: 89);
+      json['plate_in_photo_path'] = null;
+
+      await tester.pumpWidget(_wrap(
+        client,
+        CheckOutPage(initialSession: SessionDetail.fromJson(json)),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Foto Check-in Tidak Tersedia'), findsOneWidget);
+      expect(find.byIcon(Icons.image_not_supported), findsOneWidget);
+    });
+
+    testWidgets('Foto check-in string kosong menampilkan teks dan ikon alternatif yang jelas',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final client = MockClient((request) async => http.Response('{}', 404));
+
+      final json = sampleSessionJson(id: 89);
+      json['plate_in_photo_path'] = '   ';
+
+      await tester.pumpWidget(_wrap(
+        client,
+        CheckOutPage(initialSession: SessionDetail.fromJson(json)),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Foto Check-in Tidak Tersedia'), findsOneWidget);
+      expect(find.byIcon(Icons.image_not_supported), findsOneWidget);
+    });
+
+    testWidgets('Foto check-in gagal dimuat menampilkan error state dan dapat dicoba lagi',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      int photoCallCount = 0;
+      final mockClient = MockClient((request) async {
+        if (request.url.path == '/api/sessions/89/photo/in') {
+          photoCallCount++;
+          if (photoCallCount == 1) {
+            return http.Response('Internal Error', 500);
+          }
+          // minimal 1x1 PNG
+          return http.Response.bytes(
+            base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='),
+            200,
+            headers: {'content-type': 'image/png'},
+          );
+        }
+        return http.Response('{}', 404);
+      });
+
+      final json = sampleSessionJson(id: 89);
+      json['plate_in_photo_path'] = '/storage/session_89_in.jpg';
+
+      await tester.pumpWidget(_wrap(
+        mockClient,
+        CheckOutPage(initialSession: SessionDetail.fromJson(json)),
+      ));
+
+      // Settle pertama: post-frame callback _loadInPhoto berjalan dan mendapatkan 500
+      await tester.pumpAndSettle();
+
+      expect(photoCallCount, 1);
+      expect(find.text('Gagal memuat foto'), findsOneWidget);
+      expect(find.text('Ketuk untuk coba lagi'), findsOneWidget);
+      expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
+
+      // Ketuk untuk mencoba lagi
+      await tester.tap(find.text('Gagal memuat foto'));
+      await tester.pumpAndSettle();
+
+      expect(photoCallCount, 2);
+      expect(find.text('Gagal memuat foto'), findsNothing);
+      expect(find.byType(Image), findsOneWidget);
+    });
+
+    testWidgets('Foto check-in saat proses memuat menampilkan loading state',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final completer = Completer<http.Response>();
+      final mockClient = MockClient((request) async {
+        if (request.url.path == '/api/sessions/89/photo/in') {
+          return completer.future;
+        }
+        return http.Response('{}', 404);
+      });
+
+      final json = sampleSessionJson(id: 89);
+      json['plate_in_photo_path'] = '/storage/session_89_in.jpg';
+
+      await tester.pumpWidget(_wrap(
+        mockClient,
+        CheckOutPage(initialSession: SessionDetail.fromJson(json)),
+      ));
+
+      // Pump 1 frame to trigger postFrameCallback and start loading
+      await tester.pump();
+
+      expect(find.text('Memuat foto...'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      completer.complete(http.Response.bytes(
+        base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='),
+        200,
+        headers: {'content-type': 'image/png'},
+      ));
+
+      await tester.pumpAndSettle();
+      expect(find.text('Memuat foto...'), findsNothing);
     });
   });
 }

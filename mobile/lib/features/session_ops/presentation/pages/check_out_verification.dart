@@ -230,21 +230,7 @@ extension _CheckOutVerification on _CheckOutPageState {
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              if (_inPhotoBytes != null)
-                                Image.memory(
-                                  _inPhotoBytes!,
-                                  fit: BoxFit.cover,
-                                  gaplessPlayback: true,
-                                  errorBuilder: (ctx, err, stack) => const Center(
-                                    child: Icon(Icons.photo_camera,
-                                        color: Colors.white24, size:28),
-                                  ),
-                                )
-                              else
-                                const Center(
-                                  child: Icon(Icons.photo_camera_outlined,
-                                      color: Colors.white24, size: 28),
-                                ),
+                              _buildInPhotoContent(),
                               Positioned(
                                 left: 6,
                                 bottom: 6,
@@ -472,6 +458,171 @@ extension _CheckOutVerification on _CheckOutPageState {
               ],
             ),
           ],
+        ),
+      );
+    }
+
+    Widget _buildInPhotoContent() {
+      if (_session == null) {
+        return const Center(
+          child: Icon(Icons.photo_camera_outlined,
+              color: Colors.white24, size: 28),
+        );
+      }
+
+      // 1. Gambar tidak ada: plateInPhotoPath bernilai null atau string kosong
+      final photoPath = _session!.plateInPhotoPath?.trim();
+      if (photoPath == null || photoPath.isEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8).copyWith(bottom: 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(
+                  Icons.image_not_supported,
+                  color: Colors.white38,
+                  size: 26,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Foto Check-in Tidak Tersedia',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // 2. Proses loading memuat foto
+      if (_isLoadingInPhoto) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white70,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Memuat foto...',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // 3. Error saat memuat gambar
+      if (_inPhotoLoadFailed) {
+        return InkWell(
+          onTap: _loadInPhoto,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6).copyWith(bottom: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.broken_image_outlined,
+                    color: Color(0xFFF87171),
+                    size: 24,
+                  ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Gagal memuat foto',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Ketuk untuk coba lagi',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      // 4. Foto berhasil dimuat
+      if (_inPhotoBytes != null) {
+        return Image.memory(
+          _inPhotoBytes!,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (ctx, err, stack) => const Center(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.broken_image_outlined,
+                      color: Colors.white38, size: 24),
+                  SizedBox(height: 4),
+                  Text(
+                    'Gagal memuat foto',
+                    style: TextStyle(fontSize: 9, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Default jika path ada tetapi proses belum jalan
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white70,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Memuat foto...',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

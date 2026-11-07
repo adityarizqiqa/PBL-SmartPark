@@ -3,7 +3,7 @@ part of 'check_out_page.dart';
 extension _CheckOutDialogs on _CheckOutPageState {
   void _showSuccessDialog([SessionDetail? closedSession]) {
     final detail = closedSession ?? _session;
-    final nimText = detail?.nim ?? widget.nim;
+    final nimText = detail?.nim ?? (widget.nim.isNotEmpty ? widget.nim : '-');
     final plateText = _currentCheckOutPlate;
     final durationText = _durationText;
 

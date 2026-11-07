@@ -75,7 +75,7 @@ extension CheckInStepCode on CheckInStep {
   }
 }
 class _CheckInPageState extends ConsumerState<CheckInPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late CheckInStep _currentStep;
   bool _cameFromManual = false;
   late String _clockNow;
@@ -93,7 +93,8 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   late TextEditingController _plateController;
   final TextEditingController _voidReasonController = TextEditingController();
   // Live QR scanner embedded in Step 1 viewfinder (no separate route).
-  late final MobileScannerController _qrController;
+  Key _qrKey = UniqueKey();
+  late MobileScannerController _qrController;
   DateTime? _lastQrAt;
   String _lastQrCode = '';
   // Live plate camera embedded in Step 2 viewfinder.
@@ -107,19 +108,24 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   late AnimationController _animController;
   late Animation<double> _laserAnimation;
 
+  MobileScannerController _createQrController() {
+    return MobileScannerController(
+      autoStart: true,
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentStep = CheckInStepCode.tryParse(widget.initialStep) ?? CheckInStep.ktm;
     _cameFromManual = _currentStep == CheckInStep.manualNim;
     _clockNow = Formatters.time(DateTime.now());
     _nimController = TextEditingController();
     _plateController = TextEditingController();
-    _qrController = MobileScannerController(
-      autoStart: true,
-      detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
-    );
+    _qrController = _createQrController();
 
     _animController = AnimationController(
       vsync: this,
@@ -134,6 +140,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _animController.dispose();
     _qrController.dispose();
     _plateCamera?.dispose();
@@ -141,6 +148,28 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     _plateController.dispose();
     _voidReasonController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      if (_currentStep == CheckInStep.ktm) {
+        unawaited(_qrController.stop().catchError((_) {}));
+      } else if (_currentStep == CheckInStep.plate) {
+        unawaited(_disposePlateCamera());
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_currentStep == CheckInStep.ktm) {
+        _lastQrCode = '';
+        _lastQrAt = null;
+        if (!_qrController.value.isRunning || _qrController.value.error != null) {
+          unawaited(_restartQrScanner());
+        }
+      } else if (_currentStep == CheckInStep.plate) {
+        unawaited(_ensurePlateCamera());
+      }
+    }
   }
 
   void _refreshClock() {
@@ -336,12 +365,14 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
 
   /// Pindah step + serah-terima kamera: hanya satu kamera aktif.
   void _setStep(CheckInStep s) {
+    if (_currentStep == s) return;
+    final prev = _currentStep;
     setState(() {
       _currentStep = s;
       _refreshClock();
       if (s == CheckInStep.manualNim) _cameFromManual = true;
     });
-    _applyCameraForStep(s);
+    _applyCameraForStep(prev, s);
   }
 
   void _goBack() {
@@ -406,13 +437,14 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
   }
 
   void _openManualNim() {
+    final prev = _currentStep;
     setState(() {
       _cameFromManual = true;
       _manualKtmVerified = false;
       _refreshClock();
       _currentStep = CheckInStep.manualNim;
     });
-    _applyCameraForStep(CheckInStep.manualNim);
+    _applyCameraForStep(prev, CheckInStep.manualNim);
   }
 
   void _resetCheckInForm() {
@@ -430,27 +462,77 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     });
   }
 
-  void _applyCameraForStep(CheckInStep s) {
+  void _applyCameraForStep(CheckInStep prev, CheckInStep next) {
     try {
-      if (s == CheckInStep.plate) {
+      // 1. Matikan kamera step sebelumnya
+      if (prev == CheckInStep.ktm && next != CheckInStep.ktm) {
         unawaited(_qrController.stop().catchError((_) {}));
+      } else if (prev == CheckInStep.plate && next != CheckInStep.plate) {
+        unawaited(_disposePlateCamera());
+      }
+
+      // 2. Persiapkan step tujuan
+      if (next == CheckInStep.ktm) {
+        _lastQrCode = '';
+        _lastQrAt = null;
+        _flashlightOn = false;
+        unawaited(_disposePlateCamera());
+        // Jika controller scanner sebelumnya error, pulihkan controller baru
+        if (_qrController.value.error != null) {
+          try {
+            _qrController.dispose();
+          } catch (_) {}
+          _qrKey = UniqueKey();
+          _qrController = _createQrController();
+        }
+      } else if (next == CheckInStep.plate) {
+        _flashlightOn = false;
         unawaited(_ensurePlateCamera());
-      } else {
-        unawaited(_plateCamera?.pausePreview().catchError((_) {}) ?? Future.value());
-        if (s == CheckInStep.ktm) unawaited(_qrController.start().catchError((_) {}));
       }
     } catch (_) {
       // Perangkat tanpa kamera / plugin belum siap (widget test): abaikan.
     }
   }
 
+  Future<void> _disposePlateCamera() async {
+    final cam = _plateCamera;
+    _plateCamera = null;
+    _plateCamReady = false;
+    _plateCamError = null;
+    if (cam != null) {
+      try {
+        await cam.dispose();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _restartQrScanner() async {
+    try {
+      await _disposePlateCamera();
+      await _qrController.stop();
+    } catch (_) {}
+    try {
+      _qrController.dispose();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _qrKey = UniqueKey();
+      _qrController = _createQrController();
+      _flashlightOn = false;
+      _lastQrCode = '';
+      _lastQrAt = null;
+    });
+  }
+
   /// Inisialisasi kamera plat sekali saja; dipanggil saat masuk Step 2.
   Future<void> _ensurePlateCamera() async {
     try {
-      if (_plateCamera != null) {
-        await _plateCamera!.resumePreview();
+      if (_plateCamera != null && _plateCamReady) {
         return;
       }
+      try {
+        await _qrController.stop();
+      } catch (_) {}
       final cameras = await availableCameras();
       if (!mounted) return;
       if (cameras.isEmpty) {
@@ -467,7 +549,10 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
         enableAudio: false,
       );
       await controller.initialize();
-      if (!mounted) return;
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
       setState(() {
         _plateCamera = controller;
         _plateCamReady = true;
@@ -557,11 +642,15 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
     AppSnackBar.success(context, 'NIM terisi dari QR: $code');
   }
 
-  /// Nyalakan ulang pemindaian setelah kode sama ingin dibaca lagi.
-  void _rescanQrNim() {
+  /// Nyalakan ulang pemindaian setelah kode sama ingin dibaca lagi atau scanner perlu dipulihkan.
+  Future<void> _rescanQrNim() async {
     _lastQrCode = '';
     _lastQrAt = null;
-    _qrController.start();
+    if (!_qrController.value.isRunning || _qrController.value.error != null) {
+      await _restartQrScanner();
+    } else if (mounted) {
+      AppSnackBar.info(context, 'Arahkan kamera ke QR KTM mahasiswa...');
+    }
   }
 
   Future<void> _toggleQrTorch() async {

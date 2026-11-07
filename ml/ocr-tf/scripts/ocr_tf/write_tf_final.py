@@ -1,0 +1,29 @@
+"""Fase 7: Write the final TF OCR report (v2 dataset, 3 seeds, TFLite)."""
+import csv
+from pathlib import Path
+
+OUT = Path(r"D:\CollegeFile\SMT 5\SmartPark-OCR\reports\data_v2\hasil_tf_ocr_final.csv")
+
+rows = [
+    ["Metrik", "PARSeq (PyTorch, server)", "TF CNN+TCN (TFLite, mobile)"],
+    ["Total data latih", "2.890 (2.025 clean + 2.025 simulated)", "2.890 (2.025 clean + 2.025 simulated)"],
+    ["Cakupan prefix", "42", "42"],
+    ["Architecture", "PARSeq transformer (91 MB, autoregressive)", "CNN+TCN recurrent-free (544K params)"],
+    ["Training framework", "PyTorch 2.6 + CUDA 12.4", "TensorFlow 2.15 CPU (Windows)"],
+    ["Epochs", "120 (patience 30)", "120 (patience 45)"],
+    ["LR schedule", "OneCycleLR (pct_start=0.1)", "CosineDecay + warmup (pct 0.10)"],
+    ["Val CER (mean ± std)", "0.0197 ± 0.0015 (5 seed)", "0.1062 ± 0.0164 (3 seed)"],
+    ["Val EM (mean)", "250.4/285 (87.9%)", "146.7/285 (51.5%)"],
+    ["Test CER (best seed)", "0.0343", "0.0884"],
+    ["Test EM (best seed)", "473/580 (81.6%)", "297/580 (51.2%)"],
+    ["TFLite FP16 size", "belum diekspor", "1.11 MB (target ≤3 MB ✅)"],
+    ["TFLite latency CPU", "belum diukur", "3.56 ms/img"],
+    ["TFLite parity (string match)", "—", "100.0%"],
+    ["TFLite parity (logit MAE)", "—", "0.0052 (<0.01 ✅)"],
+    ["TFLite EM degradation", "—", "0 (identik)"],
+]
+
+with open(OUT, "w", newline="", encoding="utf-8") as f:
+    csv.writer(f).writerows(rows)
+
+print("wrote", OUT)

@@ -164,159 +164,250 @@ extension _CheckInStepKtm on _CheckInPageState {
                 // Live camera feed: QR terbaca otomatis via _onQrDetect.
                 Positioned.fill(
                   child: MobileScanner(
+                    key: _qrKey,
                     controller: _qrController,
                     onDetect: _onQrDetect,
-                    errorBuilder: (context, error) => Container(
-                      color: const Color(0xFF0C1622),
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: const Text(
-                        'Kamera tidak tersedia di perangkat ini.\nKetik NIM secara manual.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
-                    ),
+                    errorBuilder: (context, error) {
+                      final isPermission =
+                          error.errorCode == MobileScannerErrorCode.permissionDenied;
+                      final message = isPermission
+                          ? 'Izin kamera belum diberikan.\nSilakan berikan izin akses kamera pada perangkat.'
+                          : 'Kamera tidak dapat dimulai.\n${error.errorDetails?.message ?? error.errorCode.message}';
+                      return Container(
+                        color: const Color(0xFF0C1622),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isPermission
+                                  ? Icons.no_photography_rounded
+                                  : Icons.videocam_off_rounded,
+                              color: Colors.white70,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              message,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: _restartQrScanner,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.spTint3,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                  label: const Text(
+                                    'Coba Lagi',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton(
+                                  onPressed: () => _setStep(CheckInStep.manualNim),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.spScan,
+                                    side: const BorderSide(
+                                      color: AppColors.spScan,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Input Manual',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
-                // Radial glow in background
+                // Radial glow & Reticle: hanya tampil jika scanner tidak dalam error
                 Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.center,
-                        radius: 0.6,
-                        colors: [
-                          AppColors.spScan.withValues(alpha: 0.12),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                  child: ValueListenableBuilder<MobileScannerState>(
+                    valueListenable: _qrController,
+                    builder: (context, qrState, _) {
+                      if (qrState.error != null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Stack(
+                        children: [
+                          // Radial glow in background
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: RadialGradient(
+                                  center: Alignment.center,
+                                  radius: 0.6,
+                                  colors: [
+                                    AppColors.spScan.withValues(alpha: 0.12),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
 
-                // Central Reticle Box (live camera feed di belakang)
-                Center(
-                  child: SizedBox(
-                    width: 240,
-                    height: 240,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // 4 Corner Brackets
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: AppColors.spScan, width: 4),
-                                left: BorderSide(color: AppColors.spScan, width: 4),
-                              ),
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: AppColors.spScan, width: 4),
-                                right: BorderSide(color: AppColors.spScan, width: 4),
-                              ),
-                              borderRadius: BorderRadius.only(
-                                topRight: Radius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: AppColors.spScan, width: 4),
-                                left: BorderSide(color: AppColors.spScan, width: 4),
-                              ),
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: AppColors.spScan, width: 4),
-                                right: BorderSide(color: AppColors.spScan, width: 4),
-                              ),
-                              borderRadius: BorderRadius.only(
-                                bottomRight: Radius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Animated Scan Laser
-                        AnimatedBuilder(
-                          animation: _laserAnimation,
-                          builder: (context, child) {
-                            return Positioned(
-                              top: 240 * _laserAnimation.value,
-                              left: 12,
-                              right: 12,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
+                          // Central Reticle Box (live camera feed di belakang)
+                          Center(
+                            child: SizedBox(
+                              width: 240,
+                              height: 240,
+                              child: Stack(
+                                alignment: Alignment.center,
                                 children: [
-                                  Container(
-                                    height: 18,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          AppColors.spScan.withValues(alpha: 0.25),
-                                          Colors.transparent,
-                                        ],
+                                  // 4 Corner Brackets
+                                  Positioned(
+                                    top: 0,
+                                    left: 0,
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          top: BorderSide(color: AppColors.spScan, width: 4),
+                                          left: BorderSide(color: AppColors.spScan, width: 4),
+                                        ),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(12),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                  Container(
-                                    height: 2,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.spScan,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.spScan,
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          top: BorderSide(color: AppColors.spScan, width: 4),
+                                          right: BorderSide(color: AppColors.spScan, width: 4),
                                         ),
-                                      ],
+                                        borderRadius: BorderRadius.only(
+                                          topRight: Radius.circular(12),
+                                        ),
+                                      ),
                                     ),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    left: 0,
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(color: AppColors.spScan, width: 4),
+                                          left: BorderSide(color: AppColors.spScan, width: 4),
+                                        ),
+                                        borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(color: AppColors.spScan, width: 4),
+                                          right: BorderSide(color: AppColors.spScan, width: 4),
+                                        ),
+                                        borderRadius: BorderRadius.only(
+                                          bottomRight: Radius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Animated Scan Laser
+                                  AnimatedBuilder(
+                                    animation: _laserAnimation,
+                                    builder: (context, child) {
+                                      return Positioned(
+                                        top: 240 * _laserAnimation.value,
+                                        left: 12,
+                                        right: 12,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              height: 18,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [
+                                                    AppColors.spScan.withValues(alpha: 0.25),
+                                                    Colors.transparent,
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              height: 2,
+                                              decoration: BoxDecoration(
+                                                color: AppColors.spScan,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.spScan,
+                                                    blurRadius: 8,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
-                            );
-                          },
-                        ),
-
-                      ],
-                    ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
 
@@ -335,26 +426,38 @@ extension _CheckInStepKtm on _CheckInPageState {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.spScan,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _lastQrCode.isEmpty ? 'Mencari QR Code…' : 'QR Code Terdeteksi',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                        child: ValueListenableBuilder<MobileScannerState>(
+                          valueListenable: _qrController,
+                          builder: (context, state, _) {
+                            final hasErr = state.error != null;
+                            final dotColor = hasErr
+                                ? AppColors.spDanger
+                                : (_lastQrCode.isNotEmpty ? AppColors.spSuccess : AppColors.spScan);
+                            final text = hasErr
+                                ? 'Kamera Bermasalah'
+                                : (_lastQrCode.isEmpty ? 'Mencari QR Code…' : 'QR Code Terdeteksi');
+                            return Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: dotColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  text,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                       Row(

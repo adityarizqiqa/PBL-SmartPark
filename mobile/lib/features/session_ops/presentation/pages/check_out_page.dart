@@ -87,12 +87,19 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   @override
   void initState() {
     super.initState();
-    _outPlateController = TextEditingController(text: widget.checkInPlate);
+    _outPlateController = TextEditingController();
+    _outPlateController.addListener(_onOutPlateChanged);
     _nimFallbackController = TextEditingController(text: widget.nim);
+    _outPhotoPath = null;
+    _inPhotoBytes = null;
+    _ktmChecked = false;
 
     if (widget.initialSession != null) {
       _session = widget.initialSession;
       _matchMethod = _session!.matchMethod ?? 'plate_exact';
+      if (_nimFallbackController.text.isEmpty && _session!.nim.isNotEmpty) {
+        _nimFallbackController.text = _session!.nim;
+      }
       _scanOutAt = DateTime.now();
       _hasSearched = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadInPhoto());
@@ -114,6 +121,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
   @override
   void dispose() {
+    _outPlateController.removeListener(_onOutPlateChanged);
     _outPlateController.dispose();
     _nimFallbackController.dispose();
     _manualNoteController.dispose();
@@ -121,12 +129,18 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     super.dispose();
   }
 
+  void _onOutPlateChanged() {
+    setState(() {});
+  }
+
   String get _currentCheckOutPlate =>
       Validators.normalizePlate(_outPlateController.text);
 
-  String get _checkInPlate => _session?.plateIn ?? widget.checkInPlate;
+  String get _checkInPlate => _session?.plateIn ??
+      (widget.checkInPlate.isNotEmpty ? widget.checkInPlate : '-');
 
-  String get _currentNim => _session?.nim ?? widget.nim;
+  String get _currentNim =>
+      _session?.nim ?? (widget.nim.isNotEmpty ? widget.nim : '-');
 
   String get _checkInTime {
     final session = _session;
@@ -155,8 +169,11 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
   bool get _isPlateMatched {
     if (_session == null) return false;
-    return Validators.normalizePlate(_session!.plateIn) ==
-        _currentCheckOutPlate;
+    final outP = _currentCheckOutPlate;
+    if (outP.isEmpty) return false;
+    final inP = Validators.normalizePlate(_session!.plateIn);
+    if (inP.isEmpty) return false;
+    return inP == outP;
   }
 
   Future<void> _performLookup(String plate, {String? nim}) async {
@@ -178,6 +195,9 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
       _candidates = const [];
       _lastPlate = plate;
       _lastNim = nim;
+      _outPhotoPath = null;
+      _inPhotoBytes = null;
+      _ktmChecked = false;
     });
 
     try {
@@ -196,6 +216,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
           _lookupMessage = null;
           _lookupError = null;
           _scanOutAt = DateTime.now();
+          _outPhotoPath = null;
           _nimFallbackController.text = result.session!.nim;
           _loadInPhoto();
         } else if (result.candidates.isNotEmpty) {

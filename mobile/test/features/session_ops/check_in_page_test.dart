@@ -119,4 +119,60 @@ void main() {
     expect(find.text('Check-In Berhasil!'), findsNothing);
     expect(find.text('Plat ini sudah punya sesi aktif.'), findsWidgets);
   });
+
+  testWidgets(
+      'transisi antar step 1 -> step 2 -> step 1 berjalan mulus dan me-reset scanner',
+      (tester) async {
+    await pumpCheckIn(
+      tester,
+      MockClient((request) async => notFound()),
+    );
+
+    // Di Step 1
+    expect(find.text('LANGKAH 1 DARI 3'), findsOneWidget);
+    expect(find.text('Scan KTM'), findsOneWidget);
+
+    // Pindah ke Step 2 lewat jalur NIM manual (validasi alur baru).
+    await tester.ensureVisible(find.text('Ketik NIM Manual'));
+    await tester.tap(find.text('Ketik NIM Manual'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Input NIM Manual'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, '244107020204');
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.ensureVisible(find.text('LANJUT SCAN PLAT KENDARAAN'));
+    await tester.tap(find.text('LANJUT SCAN PLAT KENDARAAN'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Langkah 2 dari 3'), findsOneWidget);
+
+    // Kembali: plat -> NIM manual.
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Input NIM Manual'), findsOneWidget);
+
+    // Kembali lagi: NIM manual -> Step 1.
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Kembali di Step 1
+    expect(find.text('LANGKAH 1 DARI 3'), findsOneWidget);
+    expect(find.text('Scan KTM'), findsOneWidget);
+  });
+
+  testWidgets('tombol Pindai Ulang dapat ditekan tanpa crash',
+      (tester) async {
+    await pumpCheckIn(
+      tester,
+      MockClient((request) async => notFound()),
+    );
+
+    await tester.ensureVisible(find.text('Pindai Ulang'));
+    await tester.tap(find.text('Pindai Ulang'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Scan KTM'), findsOneWidget);
+  });
 }

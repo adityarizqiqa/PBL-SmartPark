@@ -1,0 +1,10 @@
+{
+  "n_runs": 5,
+  "val_cer_mean": 0.0197,
+  "val_cer_std": 0.0015,
+  "val_cer_min": 0.0178,
+  "val_cer_max": 0.0221,
+  "val_em_mean": 250.4,
+  "val_em_min": 247,
+  "val_em_max": 252
+}

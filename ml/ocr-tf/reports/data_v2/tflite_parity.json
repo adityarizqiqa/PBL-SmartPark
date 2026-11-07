@@ -1,0 +1,23 @@
+{
+  "model": "reports\\data_v2\\tfocr\\tfocr_v2_seed42\\ocr_model.keras",
+  "keras": {
+    "cer": 0.0873,
+    "em": 161,
+    "n": 285,
+    "latency_ms": 1.89
+  },
+  "tflite_fp16": {
+    "cer": 0.0873,
+    "em": 161,
+    "latency_ms": 3.61
+  },
+  "parity": {
+    "string_match_pct": 100.0,
+    "logit_mae": 0.005192,
+    "em_degradation": 0
+  },
+  "tflite_sizes_mb": {
+    "fp32": 2.18,
+    "fp16": 1.11
+  }
+}

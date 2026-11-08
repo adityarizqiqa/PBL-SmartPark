@@ -4,18 +4,6 @@ import '../../../../../core/di/providers.dart';
 import '../../../../../core/entities/area.dart';
 import '../../../../../core/entities/shift.dart';
 import '../../../../../core/failures/failure.dart';
-import '../../../areas/data/repositories/area_repository_impl.dart';
-import '../../../areas/domain/repositories/area_repository.dart';
-import '../../data/repositories/shift_repository_impl.dart';
-import '../../domain/repositories/shift_repository.dart';
-
-final supervisorShiftRepositoryProvider = Provider<ShiftRepository>((ref) {
-  return ShiftRepositoryImpl(ref.watch(apiClientProvider));
-});
-
-final supervisorAreaRepositoryProvider = Provider<AreaRepository>((ref) {
-  return AreaRepositoryImpl(ref.watch(apiClientProvider));
-});
 
 class ShiftsState {
   const ShiftsState({
@@ -91,10 +79,10 @@ class ShiftsController extends Notifier<ShiftsState> {
   Future<void> refresh() async {
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
-      final areas = await ref.read(supervisorAreaRepositoryProvider).fetchAreas();
+      final areas = await ref.read(areaRepositoryProvider).fetchAreas();
       if (!ref.mounted) return;
       final shifts =
-          await ref.read(supervisorShiftRepositoryProvider).fetchShifts();
+          await ref.read(shiftRepositoryProvider).fetchShifts();
       if (!ref.mounted) return;
 
       final ids = areas.map((a) => a.id).toSet();
@@ -123,7 +111,7 @@ class ShiftsController extends Notifier<ShiftsState> {
 
     state = state.copyWith(isSaving: true, clearFailure: true);
     try {
-      await ref.read(supervisorShiftRepositoryProvider).open(area.id);
+      await ref.read(shiftRepositoryProvider).open(area.id);
       await refresh();
       return null;
     } on Failure catch (failure) {
@@ -136,7 +124,7 @@ class ShiftsController extends Notifier<ShiftsState> {
   Future<String?> close(Shift shift, String note) async {
     state = state.copyWith(isSaving: true, clearFailure: true);
     try {
-      await ref.read(supervisorShiftRepositoryProvider).close(
+      await ref.read(shiftRepositoryProvider).close(
             shift.id,
             note: note,
           );

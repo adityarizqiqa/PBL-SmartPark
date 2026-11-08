@@ -3,18 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/di/providers.dart';
 import '../../../../../core/entities/area.dart';
 import '../../../../../core/failures/failure.dart';
-import '../../data/repositories/area_repository_impl.dart';
-import '../../domain/repositories/area_repository.dart';
-import '../../../shifts/data/repositories/shift_repository_impl.dart';
-import '../../../shifts/domain/repositories/shift_repository.dart';
-
-final areaRepositoryProvider = Provider<AreaRepository>((ref) {
-  return AreaRepositoryImpl(ref.watch(apiClientProvider));
-});
-
-final shiftRepositoryProvider = Provider<ShiftRepository>((ref) {
-  return ShiftRepositoryImpl(ref.watch(apiClientProvider));
-});
 
 class AreasState {
   const AreasState({

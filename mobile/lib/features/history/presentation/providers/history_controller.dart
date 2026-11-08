@@ -4,16 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/failures/failure.dart';
-import '../../data/repositories/history_repository_impl.dart';
 import '../../domain/entities/history_filter.dart';
 import '../../domain/entities/history_item.dart';
 import '../../domain/entities/history_page.dart';
-import '../../domain/repositories/history_repository.dart';
 import '../../domain/usecases/get_history_page.dart';
-
-final historyRepositoryProvider = Provider<HistoryRepository>((ref) {
-  return HistoryRepositoryImpl(ref.watch(apiClientProvider));
-});
 
 final getHistoryPageProvider = Provider<GetHistoryPage>((ref) {
   return GetHistoryPage(ref.watch(historyRepositoryProvider));

@@ -3,13 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/di/providers.dart';
 import '../../../../../core/entities/officer.dart';
 import '../../../../../core/failures/failure.dart';
-import '../../data/repositories/officer_repository_impl.dart';
-import '../../domain/repositories/officer_repository.dart';
-
-final officerRepositoryProvider = Provider<OfficerRepository>((ref) {
-  return OfficerRepositoryImpl(ref.watch(apiClientProvider));
-});
-
 class OfficersState {
   const OfficersState({
     this.officers = const [],

@@ -2,14 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/failures/failure.dart';
-import '../../data/repositories/vehicle_repository_impl.dart';
 import '../../domain/entities/active_vehicle.dart';
-import '../../domain/repositories/vehicle_repository.dart';
 import '../../domain/usecases/get_active_vehicles.dart';
-
-final vehicleRepositoryProvider = Provider<VehicleRepository>((ref) {
-  return VehicleRepositoryImpl(ref.watch(apiClientProvider));
-});
 
 final getActiveVehiclesProvider = Provider<GetActiveVehicles>((ref) {
   return GetActiveVehicles(ref.watch(vehicleRepositoryProvider));

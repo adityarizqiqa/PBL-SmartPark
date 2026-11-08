@@ -12,17 +12,8 @@ import '../../../supervisor/home/presentation/providers/supervisor_home_controll
 import '../../../supervisor/officers/presentation/providers/officers_controller.dart';
 import '../../../supervisor/shifts/presentation/providers/shifts_controller.dart';
 import '../../../vehicles/presentation/providers/vehicles_controller.dart';
-import '../../data/datasources/auth_remote_datasource.dart';
-import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_session.dart';
-import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/sign_in.dart';
-
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepositoryImpl(
-    AuthRemoteDataSource(ref.watch(apiClientProvider)),
-  );
-});
 
 /// `true` bila ada token sesi aktif.
 final hasSessionProvider = Provider<bool>((ref) {

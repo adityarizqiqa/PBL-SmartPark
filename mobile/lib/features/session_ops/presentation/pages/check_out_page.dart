@@ -8,7 +8,6 @@ import 'camera_capture_page.dart';
 import '../../../../core/entities/lookup_result.dart';
 import '../../../../core/entities/parking_session.dart';
 import '../../../../core/di/providers.dart';
-import '../providers/session_providers.dart';
 import '../../../../core/failures/failure.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';

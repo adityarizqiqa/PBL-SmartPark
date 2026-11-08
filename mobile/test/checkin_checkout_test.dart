@@ -11,7 +11,6 @@ import 'package:mobile/core/entities/parking_session.dart';
 import 'package:mobile/features/session_ops/data/repositories/session_repository_impl.dart';
 import 'package:mobile/features/session_ops/presentation/pages/check_in_page.dart';
 import 'package:mobile/features/session_ops/presentation/pages/check_out_page.dart';
-import 'package:mobile/features/session_ops/presentation/providers/session_providers.dart';
 
 import 'helpers/fixtures.dart';
 

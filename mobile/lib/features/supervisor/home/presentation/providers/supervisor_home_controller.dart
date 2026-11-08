@@ -4,18 +4,6 @@ import '../../../../../core/di/providers.dart';
 import '../../../../../core/entities/area.dart';
 import '../../../../../core/entities/shift.dart';
 import '../../../../../core/failures/failure.dart';
-import '../../../areas/data/repositories/area_repository_impl.dart';
-import '../../../areas/domain/repositories/area_repository.dart';
-import '../../../shifts/data/repositories/shift_repository_impl.dart';
-import '../../../shifts/domain/repositories/shift_repository.dart';
-
-final homeAreaRepositoryProvider = Provider<AreaRepository>((ref) {
-  return AreaRepositoryImpl(ref.watch(apiClientProvider));
-});
-
-final homeShiftRepositoryProvider = Provider<ShiftRepository>((ref) {
-  return ShiftRepositoryImpl(ref.watch(apiClientProvider));
-});
 
 class SupervisorHomeState {
   const SupervisorHomeState({
@@ -62,11 +50,11 @@ class SupervisorHomeController extends Notifier<SupervisorHomeState> {
     state = state.copyWith(isLoading: true, clearFailure: true);
     try {
       final areas = await ref
-          .read(homeAreaRepositoryProvider)
+          .read(areaRepositoryProvider)
           .fetchAreas(includeInactive: true);
       if (!ref.mounted) return;
       final shifts =
-          await ref.read(homeShiftRepositoryProvider).fetchShifts(openOnly: true);
+          await ref.read(shiftRepositoryProvider).fetchShifts(openOnly: true);
       if (!ref.mounted) return;
       state = state.copyWith(
         areas: areas,

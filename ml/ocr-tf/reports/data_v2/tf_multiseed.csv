@@ -1,0 +1,4 @@
+seed,tag,val_cer,val_em,val_n,best_epoch,minutes
+42,tfocr_v2_seed42,0.0873,161,285,86,112.0
+43,tfocr_v2_seed43,0.1042,149,285,89,102.6
+44,tfocr_v2_seed44,0.1272,130,285,106,110.0

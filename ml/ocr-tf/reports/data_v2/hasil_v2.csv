@@ -1,0 +1,11 @@
+Metrik,v1 (data lama 1044),v2 (gabungan 2890)
+Total data,1044,2890
+Train / Val / Test,831 / 105 / 108,2025 / 285 / 580
+Prefix wilayah unik,10,42
+"Val CER (5 seed, mean ± std)",0.0370 ± 0.0048,0.0197 ± 0.0015
+Val EM (mean),78.6/105 (74.9%),250.4/285 (87.9%)
+"Test CER (5 seed, rentang)",0.081 – 0.087,0.033 – 0.040
+"Test EM (val-best seed, dievaluasi 1x)",64/108 (59.3%),473/580 (81.6%)
+Head-to-head CER (375 gambar external),0.133,0.024
+Head-to-head EM (375 gambar external),132/375 (35.2%),320/375 (85.3%)
+Leakage label/source antar-split,0,0

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../di/providers.dart';
+import '../utils/area_label.dart';
 
 /// Identitas yang tampil di layar petugas maupun pengawas.
 class OfficerIdentity {
@@ -25,11 +26,12 @@ class OfficerIdentity {
 
   /// Label lengkap untuk judul, mis. `POS-UTAMA • Pos Parkir Utama`.
   String get fullLabel => areaCode.isEmpty ? areaName : '$areaCode • $areaName';
+
   /// `POS-UTAMA • Pos Parkir Utama` → `POS-UTAMA`
-  static String codeOf(String label) => _codeOf(label);
+  static String codeOf(String label) => areaShortLabel(label);
 
   /// `POS-UTAMA • Pos Parkir Utama` → `Pos Parkir Utama`
-  static String nameOf(String label) => _nameOf(label);
+  static String nameOf(String label) => areaFullLabel(label);
 }
 
 /// Membaca identitas dari sesi aktif. `null` berarti belum masuk.
@@ -42,26 +44,8 @@ final officerIdentityProvider = Provider<OfficerIdentity?>((ref) {
   return OfficerIdentity(
     name: name,
     roleLabel: store.isSupervisor ? 'Pengawas (SPV)' : 'Petugas Gerbang',
-    areaCode: _codeOf(areaName),
-    areaName: _nameOf(areaName),
+    areaCode: areaShortLabel(areaName),
+    areaName: areaFullLabel(areaName),
     isSupervisor: store.isSupervisor,
   );
 });
-
-/// `POS-UTAMA • Pos Parkir Utama` → `POS-UTAMA`.
-String areaShortLabel(String label) => _codeOf(label);
-
-/// `POS-UTAMA • Pos Parkir Utama` → `Pos Parkir Utama`.
-String areaFullLabel(String label) => _nameOf(label);
-
-/// `POS-UTAMA • Pos Parkir Utama` → `POS-UTAMA`
-String _codeOf(String label) {
-  if (!label.contains('•')) return label;
-  return label.split('•').first.trim();
-}
-
-/// `POS-UTAMA • Pos Parkir Utama` → `Pos Parkir Utama`
-String _nameOf(String label) {
-  if (!label.contains('•')) return label;
-  return label.split('•').last.trim();
-}

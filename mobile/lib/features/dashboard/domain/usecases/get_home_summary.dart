@@ -1,3 +1,4 @@
+import '../entities/home_summary.dart';
 import '../repositories/dashboard_repository.dart';
 
 /// Memuat ringkasan beranda beserta kapasitas lahan.

@@ -2,13 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/failures/failure.dart';
-import '../../data/repositories/dashboard_repository_impl.dart';
-import '../../domain/repositories/dashboard_repository.dart';
+import '../../domain/entities/home_summary.dart';
 import '../../domain/usecases/get_home_summary.dart';
-
-final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
-  return DashboardRepositoryImpl(ref.watch(apiClientProvider));
-});
 
 final getHomeSummaryProvider = Provider<GetHomeSummary>((ref) {
   return GetHomeSummary(ref.watch(dashboardRepositoryProvider));

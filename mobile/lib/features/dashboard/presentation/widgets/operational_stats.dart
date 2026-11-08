@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../domain/repositories/dashboard_repository.dart';
+import '../../domain/entities/home_summary.dart';
 
 /// Empat kartu statistik dan bilah kapasitas lahan.
 class OperationalStats extends StatelessWidget {

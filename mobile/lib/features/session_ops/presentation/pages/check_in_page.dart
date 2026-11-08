@@ -9,9 +9,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../core/entities/parking_session.dart';
 import '../../../../core/failures/failure.dart';
+import '../../../../core/di/providers.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../providers/session_providers.dart';
-import '../../../../core/session/officer_identity.dart';
+import '../../../../core/utils/area_label.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_snack_bar.dart';
@@ -584,10 +584,35 @@ class _CheckInPageState extends ConsumerState<CheckInPage>
         _platePreviewing = true;
         _plateCapturing = false;
       });
+      unawaited(_runPlateOcr(file.path));
     } catch (_) {
       if (!mounted) return;
       setState(() => _plateCapturing = false);
       AppSnackBar.error(context, 'Gagal mengambil foto. Coba lagi.');
+    }
+  }
+
+  /// Jalankan deteksi plat + OCR terhadap foto yang baru diambil, lalu isi
+  /// `_plateNumber` bila berhasil. Gagal/deteksi kosong = biarkan user pakai
+  /// tombol "Koreksi Manual".
+  Future<void> _runPlateOcr(String path) async {
+    try {
+      final recognizer = ref.read(plateRecognizerProvider);
+      final bytes = await File(path).readAsBytes();
+      final result = await recognizer.recognize(bytes);
+      if (!mounted) return;
+      if (result == null) {
+        AppSnackBar.info(context, 'Plat tidak terdeteksi otomatis.');
+        return;
+      }
+      setState(() => _plateNumber = Validators.normalizePlate(result.text));
+      if (result.validFormat) {
+        AppSnackBar.success(context, 'Plat terdeteksi: ${result.text}');
+      } else {
+        AppSnackBar.info(context, 'Hasil OCR: ${result.text}. Periksa kembali.');
+      }
+    } catch (_) {
+      // Biarkan user memakai "Koreksi Manual".
     }
   }
 

@@ -18,7 +18,8 @@ class HistoryState {
     this.page,
     this.query = '',
     this.statusFilter = HistoryStatusFilter.all,
-    this.period = HistoryPeriod.today,
+    this.period = HistoryPeriod.all,
+    this.selectedDate,
     this.isLoading = true,
     this.failure,
   });
@@ -27,16 +28,33 @@ class HistoryState {
   final String query;
   final HistoryStatusFilter statusFilter;
   final HistoryPeriod period;
+  final DateTime? selectedDate;
   final bool isLoading;
   final Failure? failure;
 
   List<HistoryItem> get items => page?.items ?? const [];
 
-  /// Saringan status dilakukan di klien karena endpoint hanya menerima `q`.
+  /// Saringan status dan periode dilakukan di klien karena endpoint riwayat
+  /// hanya menerima `q` untuk pencarian teks.
   List<HistoryItem> get visibleItems {
     final status = statusFilter.status;
-    if (status == null) return items;
-    return items.where((item) => item.status == status).toList();
+    final withStatus =
+        status == null ? items : items.where((i) => i.status == status).toList();
+    return _filterByPeriod(withStatus);
+  }
+
+  List<HistoryItem> _filterByPeriod(List<HistoryItem> list) {
+    final DateTime? reference = switch (period) {
+      HistoryPeriod.all => null,
+      HistoryPeriod.today => DateTime.now(),
+      HistoryPeriod.yesterday =>
+        DateTime.now().subtract(const Duration(days: 1)),
+      HistoryPeriod.custom => selectedDate ?? DateTime.now(),
+    };
+    if (reference == null) return list;
+    return list
+        .where((item) => _sameLocalDay(item.checkedInAt, reference))
+        .toList();
   }
 
   int get total => page?.total ?? 0;
@@ -50,6 +68,8 @@ class HistoryState {
     String? query,
     HistoryStatusFilter? statusFilter,
     HistoryPeriod? period,
+    DateTime? selectedDate,
+    bool clearSelectedDate = false,
     bool? isLoading,
     Failure? failure,
     bool clearFailure = false,
@@ -59,10 +79,19 @@ class HistoryState {
       query: query ?? this.query,
       statusFilter: statusFilter ?? this.statusFilter,
       period: period ?? this.period,
+      selectedDate:
+          clearSelectedDate ? null : selectedDate ?? this.selectedDate,
       isLoading: isLoading ?? this.isLoading,
       failure: clearFailure ? null : failure ?? this.failure,
     );
   }
+}
+
+/// Sama hari pada zona lokal (bukan UTC), karena riwayat ditampilkan per hari.
+bool _sameLocalDay(DateTime a, DateTime b) {
+  final la = a.toLocal();
+  final lb = b.toLocal();
+  return la.year == lb.year && la.month == lb.month && la.day == lb.day;
 }
 
 /// Mengatur pencarian, saringan status, dan perpindahan halaman riwayat.
@@ -80,8 +109,12 @@ class HistoryController extends Notifier<HistoryState> {
     state = state.copyWith(statusFilter: filter);
   }
 
-  void setPeriod(HistoryPeriod period) {
-    state = state.copyWith(period: period);
+  void setPeriod(HistoryPeriod period, DateTime? date) {
+    state = state.copyWith(
+      period: period,
+      selectedDate: date,
+      clearSelectedDate: period != HistoryPeriod.custom,
+    );
   }
 
   /// Menunda permintaan 400 ms agar setiap ketikan tidak memanggil backend.

@@ -239,7 +239,7 @@ class _OfficerShellState extends ConsumerState<OfficerShell> {
           parkingLot: identity?.fullLabel ?? '',
         ),
       ),
-      onOpenCheckOut: () => _push(_checkOutPage()),
+      onOpenCheckOut: () => setState(() => _index = 1),
       onOpenVehicles: () => setState(() => _index = 1),
       onOpenHistory: () => setState(() => _index = 2),
       onLogout: _logout,

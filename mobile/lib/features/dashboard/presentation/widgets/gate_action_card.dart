@@ -46,8 +46,8 @@ class GateActionCard extends StatelessWidget {
       badge: 'KELUAR',
       subtitle: 'Verifikasi Kendaraan',
       icon: Icons.output_rounded,
-      gradient: const [AppColors.spPrimary600, AppColors.spPrimary700],
-      shadowColor: AppColors.spPrimary600,
+      gradient: const [AppColors.spPrimary, AppColors.spPrimary700],
+      shadowColor: AppColors.spPrimary,
       onTap: onTap,
     );
   }

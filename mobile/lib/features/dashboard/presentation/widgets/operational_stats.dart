@@ -15,9 +15,6 @@ class OperationalStats extends StatelessWidget {
   final HomeSummary summary;
   final VoidCallback? onOpenVehicles;
 
-  /// Ambang "Perlu Verifikasi" belum punya endpoint; nilai tetap sampai ada.
-  static const int needVerification = 3;
-
   @override
   Widget build(BuildContext context) {
     final occupancyColor = summary.occupancyPercent > 80
@@ -27,32 +24,13 @@ class OperationalStats extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                label: 'Sedang Parkir',
-                value: '${summary.parked}',
-                valueColor: AppColors.spPrimary,
-                icon: Icons.local_parking_rounded,
-                badgeText: '${summary.occupancyPercent}% Penuh',
-                onTap: onOpenVehicles,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _StatCard(
-                label: 'Perlu Verifikasi',
-                value: '$needVerification',
-                valueColor: AppColors.spWarn,
-                icon: Icons.warning_amber_rounded,
-                badgeText: 'Perhatian',
-                badgeColor: AppColors.spWarnBg,
-                badgeTextColor: AppColors.spWarn,
-                onTap: onOpenVehicles,
-              ),
-            ),
-          ],
+        _StatCard(
+          label: 'Sedang Parkir',
+          value: '${summary.parked}',
+          valueColor: AppColors.spPrimary,
+          icon: Icons.local_parking_rounded,
+          badgeText: '${summary.occupancyPercent}% Penuh',
+          onTap: onOpenVehicles,
         ),
         const SizedBox(height: 10),
         Row(
@@ -141,8 +119,6 @@ class _StatCard extends StatelessWidget {
     required this.valueColor,
     required this.icon,
     required this.badgeText,
-    this.badgeColor,
-    this.badgeTextColor,
     this.onTap,
   });
 
@@ -151,8 +127,6 @@ class _StatCard extends StatelessWidget {
   final Color valueColor;
   final IconData icon;
   final String badgeText;
-  final Color? badgeColor;
-  final Color? badgeTextColor;
   final VoidCallback? onTap;
 
   @override
@@ -212,7 +186,7 @@ class _StatCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: badgeColor ?? AppColors.spTint1,
+                  color: AppColors.spTint1,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -220,7 +194,7 @@ class _StatCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: badgeTextColor ?? AppColors.spPrimary600,
+                    color: AppColors.spPrimary600,
                   ),
                 ),
               ),

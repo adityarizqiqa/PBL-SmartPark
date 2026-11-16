@@ -34,7 +34,7 @@ class StatusPill extends StatelessWidget {
           PillTone.warning,
           Icons.warning_amber_rounded,
         ),
-      'active' => ('Aktif', PillTone.info, Icons.local_parking_rounded),
+      'active' => ('Sedang Parkir', PillTone.info, Icons.local_parking_rounded),
       'voided' => ('Dibatalkan', PillTone.danger, Icons.cancel_rounded),
       'rejected' => ('Ditolak', PillTone.danger, Icons.block_rounded),
       _ => (status, PillTone.neutral, Icons.info_outline_rounded),

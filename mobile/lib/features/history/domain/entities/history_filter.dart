@@ -18,6 +18,7 @@ enum HistoryStatusFilter {
 
 /// Periode ringkas yang tersedia di layar.
 enum HistoryPeriod {
+  all('Semua'),
   today('Hari Ini'),
   yesterday('Kemarin'),
   custom('Pilih Tanggal');

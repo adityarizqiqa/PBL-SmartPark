@@ -210,8 +210,21 @@ class HistoryFilters extends StatelessWidget {
 
   final HistoryPeriod period;
   final HistoryStatusFilter status;
-  final ValueChanged<HistoryPeriod> onPeriodChanged;
+  final void Function(HistoryPeriod period, DateTime? date) onPeriodChanged;
   final ValueChanged<HistoryStatusFilter> onStatusChanged;
+
+  Future<void> _pickDate(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: now,
+    );
+    if (picked != null) {
+      onPeriodChanged(HistoryPeriod.custom, picked);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +244,9 @@ class HistoryFilters extends StatelessWidget {
                     icon: option == HistoryPeriod.custom
                         ? Icons.calendar_today_rounded
                         : null,
-                    onTap: () => onPeriodChanged(option),
+                    onTap: () => option == HistoryPeriod.custom
+                        ? _pickDate(context)
+                        : onPeriodChanged(option, null),
                   ),
                 ),
             ],

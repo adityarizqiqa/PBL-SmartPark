@@ -4,11 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 
 import 'plate_pipeline.dart';
 
-/// Pemuat + runner dua model TFLite untuk ALPR on-device.
-///
-/// Detektor YOLOv8n dan OCR CNN-TCN dimuat sekali (singleton) lalu dipakai
-/// untuk frame berikutnya. Gunakan `recognize` untuk memproses foto JPEG/PNG
-/// mentah menjadi teks plat.
+/// Runner model ALPR TFLite.
 class PlateRecognizer {
   PlateRecognizer({
     this.detectorAsset = 'assets/ml/plate_detector.tflite',
@@ -35,8 +31,7 @@ class PlateRecognizer {
     _ocr = null;
   }
 
-  /// Deteksi + crop + OCR untuk satu gambar. Kembalikan plat terbaik (belum
-  /// difilter format — pemanggil memutuskan validitas lewat [PlateRecognition.validFormat]).
+  /// Deteksi dan baca plat terbaik dari gambar.
   Future<PlateRecognition?> recognize(Uint8List imageBytes) async {
     await ensureLoaded();
     final detector = _detector;

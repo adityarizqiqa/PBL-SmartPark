@@ -3,17 +3,9 @@ import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
 
-/// Alur angka-ajaib untuk pipeline ALPR dua-tahap:
-/// deteksi plat (YOLOv8n tflite) -> crop -> OCR (CNN-TCN tflite).
-///
-/// File ini murni (tanpa `tflite_flutter`/`dart:ui`) agar logika matriks dan
-/// decoding bisa diuji di host. Nilai kontrak diverifikasi terhadap model asli:
-/// - Detektor : input NCHW [1,3,1280,1280] float32 [0,1]; output [1,5,33600]
-///   dengan `[cx,cy,w,h,conf]` TER-NORMALISASI [0,1].
-/// - OCR      : input [1,48,192,1] float32 grayscale [0,1]; output [1,48,37]
-///   logits CTC (vocab blank=0, 0-9=1..10, A-Z=11..36).
+/// Pipeline ALPR: deteksi plat, crop, lalu OCR.
 const int kDetectorInputSize = 1280;
-const int kDetectorAnchors = 33600; // 3 stride YOLOv8n @1280: 160^2+80^2+40^2
+const int kDetectorAnchors = 33600; // Jumlah anchor YOLOv8.
 const double kDetectorConfThresh = 0.40;
 const double kDetectorNmsIou = 0.45;
 const double kCropPadRatio = 0.08;
@@ -25,7 +17,7 @@ const int kOcrBlank = 0;
 
 final RegExp _plateRegex = RegExp(r'^[A-Z]{1,2}[0-9]{1,4}[A-Z]{1,3}$');
 
-/// Satu bbox plat dalam koordinat piksel gambar asli.
+/// Bounding box plat pada gambar asli.
 class PlateDetection {
   const PlateDetection({
     required this.x1,
@@ -45,7 +37,7 @@ class PlateDetection {
   double get height => y2 - y1;
 }
 
-/// Hasil akhir OCR satu plat.
+/// Hasil OCR plat.
 class PlateRecognition {
   const PlateRecognition({
     required this.text,
@@ -59,12 +51,12 @@ class PlateRecognition {
   final double confidence;
   final bool validFormat;
 
-  /// [x1, y1, x2, y2] dalam piksel gambar asli.
+  /// Koordinat bbox pada gambar asli.
   final List<int> box;
   final double detConf;
 }
 
-/// Frame RGB hasil decode (EXIF sudah dibenamkan) + metadata dimensi.
+/// Frame RGB dengan orientasi EXIF diterapkan.
 class DecodedFrame {
   const DecodedFrame({
     required this.width,
@@ -75,11 +67,11 @@ class DecodedFrame {
   final int width;
   final int height;
 
-  /// Flat RGB, panjang `width * height * 3`.
+  /// Data RGB berurutan.
   final Uint8List rgb;
 }
 
-/// Tensor input detektor + parameter letterbox untuk memetakan balik bbox.
+/// Tensor input detektor dan parameter letterbox.
 class DetectorInput {
   const DetectorInput({
     required this.tensor,
@@ -89,7 +81,7 @@ class DetectorInput {
     required this.inputSize,
   });
 
-  /// NCHW [1,3,inputSize,inputSize] float32 [0,1].
+  /// Tensor NCHW dengan nilai 0–1.
   final Float32List tensor;
   final double scale;
   final double padX;
@@ -97,7 +89,7 @@ class DetectorInput {
   final int inputSize;
 }
 
-/// Crop grayscale hasil pemotongan bbox.
+/// Crop grayscale.
 class GrayCrop {
   const GrayCrop({required this.width, required this.height, required this.data});
 
@@ -106,8 +98,7 @@ class GrayCrop {
   final Uint8List data;
 }
 
-/// Decode JPEG/PNG -> RGB, dengan orientasi EXIF dibenamkan agar OCR tidak
-/// menerima gambar miring 90°.
+/// Decode gambar ke RGB dan terapkan orientasi EXIF.
 DecodedFrame? decodeFrame(Uint8List imageBytes) {
   final decoded = img.decodeJpg(imageBytes) ?? img.decodeImage(imageBytes);
   if (decoded == null) return null;
@@ -120,8 +111,7 @@ DecodedFrame? decodeFrame(Uint8List imageBytes) {
   );
 }
 
-/// Letterbox frame ke 1280x1280 (rasio dipertahankan, pad abu-abu 114) lalu
-/// buat tensor NCHW float32 [0,1] untuk detektor.
+/// Ubah frame menjadi tensor input detektor.
 DetectorInput buildDetectorInput(
   DecodedFrame frame, {
   int inputSize = kDetectorInputSize,
@@ -188,7 +178,7 @@ DetectorInput buildDetectorInput(
   );
 }
 
-/// Decode output detektor [1,5,33600] -> bbox piksel asli + NMS.
+/// Ubah output detektor menjadi bbox pada gambar asli.
 List<PlateDetection> decodeDetections(
   Float32List output,
   DetectorInput input, {
@@ -224,8 +214,7 @@ List<PlateDetection> decodeDetections(
   return _nms(candidates, iouThresh);
 }
 
-/// Crop bbox + margin, lalu konversi ke grayscale BT.601 (sama dengan
-/// `cv2.COLOR_BGR2GRAY` yang dipakai training).
+/// Crop plat dan ubah ke grayscale.
 GrayCrop cropToGray(DecodedFrame frame, PlateDetection det) {
   final w = frame.width;
   final h = frame.height;
@@ -255,16 +244,14 @@ GrayCrop cropToGray(DecodedFrame frame, PlateDetection det) {
       final r = rgb[si];
       final g = rgb[si + 1];
       final b = rgb[si + 2];
-      // 299/587/114 + pembulatan, identik dengan BGR2GRAY OpenCV.
+      // Konversi BT.601 dengan pembulatan.
       gray[dstRow + xx] = ((r * 299 + g * 587 + b * 114 + 500) ~/ 1000);
     }
   }
   return GrayCrop(width: cw, height: ch, data: gray);
 }
 
-/// Preprocessing OCR identik training:
-/// grayscale -> crop baris pajak (ar<1.8) -> CLAHE(2.0,8x8) -> resize 192x48
-/// -> normalisasi [0,1] -> tensor [1,48,192,1].
+/// Siapkan tensor OCR dari crop grayscale.
 Float32List buildOcrInput(GrayCrop crop) {
   if (crop.width <= 0 || crop.height <= 0) {
     return Float32List(kOcrHeight * kOcrWidth);
@@ -309,7 +296,7 @@ Float32List buildOcrInput(GrayCrop crop) {
   return tensor;
 }
 
-/// CTC greedy decode: argmax per timestep -> collapse repeat -> drop blank.
+/// Decode logits CTC secara greedy.
 String ctcGreedyDecode(Float32List logits) {
   final out = StringBuffer();
   var prev = -1;
@@ -332,7 +319,7 @@ String ctcGreedyDecode(Float32List logits) {
   return out.toString();
 }
 
-/// Confidence relatif: rata-rata proabilitas token (max softmax per timestep).
+/// Hitung confidence rata-rata token.
 double softmaxConfidence(Float32List logits) {
   var total = 0.0;
   for (var t = 0; t < kOcrTimesteps; t++) {
@@ -384,8 +371,7 @@ double _iou(PlateDetection a, PlateDetection b) {
   return union <= 0 ? 0.0 : inter / union;
 }
 
-/// CLAHE (clipLimit 2.0, tileGrid 8x8) — port dari algoritma OpenCV dengan
-/// bilinear interpolation antar-LUT tile dan border reflect-101.
+/// Terapkan CLAHE dengan interpolasi bilinear.
 Uint8List clahe(
   Uint8List src,
   int width,
@@ -395,10 +381,7 @@ Uint8List clahe(
   double clipLimit = 2.0,
 }) {
   const histSize = 256;
-  // OpenCV hanya pad bila SALAH SATU dimensi tak habis dibagi grid; formula
-  // pad-nya `grid - (size % grid)` (bukan modulo), sehingga dimensi yang
-  // habis dibagi pun ikut ter-reflect satu kolom/baris ekstra. Ini quirk
-  // OpenCV yang wajib direplikasi agar hasil identik dengan training.
+  // Ikuti padding CLAHE OpenCV agar hasil sesuai training.
   final divisible = (width % gridX == 0) && (height % gridY == 0);
   final padX = divisible ? 0 : (gridX - width % gridX);
   final padY = divisible ? 0 : (gridY - height % gridY);
@@ -410,7 +393,7 @@ Uint8List clahe(
   final tileH = paddedH ~/ gridY;
   final tileArea = tileW * tileH;
 
-  // OpenCV: static_cast<int>(clipLimit * tileArea / histSize), min 1.
+  // Batas clip mengikuti rumus OpenCV.
   final clip = math.max(1, (clipLimit * tileArea / histSize).toInt());
 
   final luts = <Uint8List>[];
@@ -455,12 +438,12 @@ Uint8List clahe(
       final t2x = _clampTile(tx2, gridX);
 
       final pixel = src[y * width + x];
-      final v1 = luts[t1y * gridX + t1x][pixel]; // A=(ty1,tx1)
-      final v2 = luts[t2y * gridX + t1x][pixel]; // C=(ty2,tx1)
-      final v3 = luts[t1y * gridX + t2x][pixel]; // B=(ty1,tx2)
-      final v4 = luts[t2y * gridX + t2x][pixel]; // D=(ty2,tx2)
+      final v1 = luts[t1y * gridX + t1x][pixel];
+      final v2 = luts[t2y * gridX + t1x][pixel];
+      final v3 = luts[t1y * gridX + t2x][pixel];
+      final v4 = luts[t2y * gridX + t2x][pixel];
 
-      // OpenCV: (A*xa1 + B*xa)*ya1 + (C*xa1 + D*xa)*ya
+      // Interpolasi bilinear antar-LUT.
       final res = v1 * (1 - xa) * (1 - ya) +
           v2 * (1 - xa) * ya +
           v3 * xa * (1 - ya) +

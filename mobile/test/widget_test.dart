@@ -434,9 +434,16 @@ void main() {
     await tester.tap(find.text('Mulai Bertugas'));
     await tester.pumpAndSettle();
 
-    // Tap CHECK-OUT from Beranda
+    // Tap CHECK-OUT from Beranda → buka daftar kendaraan/sesi aktif.
     await tester.ensureVisible(find.text('CHECK-OUT'));
     await tester.tap(find.text('CHECK-OUT'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(VehiclesPage), findsOneWidget);
+
+    // Buka check-out berbasis scan dari tombol FAB di daftar kendaraan.
+    await tester.ensureVisible(find.text('Scan Check-Out'));
+    await tester.tap(find.text('Scan Check-Out'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -467,7 +474,7 @@ void main() {
     await tester.tap(find.text('Selesai & Ke Beranda'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(OfficerHomePage), findsOneWidget);
+    expect(find.byType(VehiclesPage), findsOneWidget);
   });
 
   testWidgets('Logout lalu login lagi tetap membuka beranda petugas', (

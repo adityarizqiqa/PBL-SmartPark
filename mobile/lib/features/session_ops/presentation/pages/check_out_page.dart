@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'camera_capture_page.dart';
 
 import '../../../../core/entities/lookup_result.dart';
 import '../../../../core/entities/parking_session.dart';
@@ -54,7 +55,8 @@ class CheckOutPage extends ConsumerStatefulWidget {
   ConsumerState<CheckOutPage> createState() => _CheckOutPageState();
 }
 
-class _CheckOutPageState extends ConsumerState<CheckOutPage> {
+class _CheckOutPageState extends ConsumerState<CheckOutPage>
+    with WidgetsBindingObserver {
   // Sesi & hasil pencarian aktif
   SessionDetail? _session;
   String? _matchMethod;
@@ -80,12 +82,21 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
   String? _outPhotoPath;
   Uint8List? _inPhotoBytes;
 
+  /// Kamera plat keluar inline (pratinjau live, bukan halaman terpisah).
+  CameraController? _outCamera;
+  bool _outCamReady = false;
+  bool _outCapturing = false;
+  bool _outPreviewing = false;
+  bool _outTorchOn = false;
+  String? _outCamError;
+
   /// Momen sesi ditemukan/dimuat; dipakai sekali untuk jam & durasi keluar.
   DateTime? _scanOutAt;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _outPlateController = TextEditingController();
     _outPlateController.addListener(_onOutPlateChanged);
     _nimFallbackController = TextEditingController(text: widget.nim);
@@ -101,7 +112,10 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
       }
       _scanOutAt = DateTime.now();
       _hasSearched = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadInPhoto());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadInPhoto();
+        unawaited(_ensureOutCamera());
+      });
       return;
     }
 
@@ -120,6 +134,8 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_disposeOutCamera());
     _outPlateController.removeListener(_onOutPlateChanged);
     _outPlateController.dispose();
     _nimFallbackController.dispose();
@@ -218,6 +234,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
           _outPhotoPath = null;
           _nimFallbackController.text = result.session!.nim;
           _loadInPhoto();
+          unawaited(_ensureOutCamera());
         } else if (result.candidates.isNotEmpty) {
           _session = null;
           _candidates = result.candidates;
@@ -266,6 +283,7 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
         _scanOutAt = DateTime.now();
       });
       _loadInPhoto();
+      unawaited(_ensureOutCamera());
     } on Failure catch (failure) {
       if (!mounted) return;
       setState(() => _isSearching = false);
@@ -276,20 +294,148 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
     }
   }
 
-  Future<void> _captureOutPhoto() async {
-    final path = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder: (_) => const CameraCapturePage(title: 'Foto Plat Keluar'),
-      ),
-    );
-    if (!mounted) return;
-    if (path == null) {
-      AppSnackBar.info(context, 'Pengambilan foto dibatalkan.');
+  /// Inisialisasi kamera plat keluar sekali; menampilkan pratinjau live inline.
+  Future<void> _ensureOutCamera() async {
+    try {
+      if (_outCamera != null && _outCamReady) return;
+      final cameras = await availableCameras();
+      if (!mounted) return;
+      if (cameras.isEmpty) {
+        setState(() => _outCamError = 'Tidak ada kamera di perangkat ini.');
+        return;
+      }
+      final back = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+      final controller = CameraController(
+        back,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _outCamera = controller;
+        _outCamReady = true;
+        _outCamError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _outCamReady = false;
+        _outCamError = 'Kamera tidak tersedia.';
+      });
+    }
+  }
+
+  Future<void> _disposeOutCamera() async {
+    final cam = _outCamera;
+    _outCamera = null;
+    _outCamReady = false;
+    _outCamError = null;
+    if (cam != null) {
+      try {
+        await cam.dispose();
+      } catch (_) {}
+    }
+  }
+
+  /// Jepret inline: hasil langsung menggantikan feed live.
+  Future<void> _captureOutPhotoInline() async {
+    final camera = _outCamera;
+    if (camera == null || !_outCamReady || _outCapturing || camera.value.isTakingPicture) {
+      AppSnackBar.info(context, 'Kamera belum siap. Tunggu sebentar.');
       return;
     }
+    setState(() => _outCapturing = true);
+    try {
+      final file = await camera.takePicture();
+      if (!mounted) return;
+      setState(() {
+        _outPhotoPath = file.path;
+        _outPreviewing = true;
+        _outCapturing = false;
+      });
+      unawaited(camera.pausePreview().catchError((_) {}));
+      unawaited(_runOutPlateOcr(file.path));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _outCapturing = false);
+      AppSnackBar.error(context, 'Gagal mengambil foto. Coba lagi.');
+    }
+  }
+
+  void _retakeOutPhoto() {
     setState(() {
-      _outPhotoPath = path;
+      _outPreviewing = false;
+      _outPhotoPath = null;
     });
+    try {
+      unawaited(_outCamera?.resumePreview().catchError((_) {}) ?? Future.value());
+    } catch (_) {}
+  }
+
+  /// Jalankan deteksi plat + OCR pada foto keluar, lalu isi kolom plat keluar.
+  Future<void> _runOutPlateOcr(String path) async {
+    try {
+      final recognizer = ref.read(plateRecognizerProvider);
+      final bytes = await File(path).readAsBytes();
+      final result = await recognizer.recognize(bytes);
+      if (!mounted) return;
+      if (result == null) {
+        AppSnackBar.info(context, 'Plat keluar tidak terdeteksi otomatis.');
+        return;
+      }
+      final plate = Validators.normalizePlate(result.text);
+      _outPlateController.text = plate;
+      if (result.validFormat) {
+        AppSnackBar.success(context, 'Plat keluar terdeteksi: ${result.text}');
+      } else {
+        AppSnackBar.info(context, 'Hasil OCR: ${result.text}. Periksa kembali.');
+      }
+    } catch (_) {
+      // Biarkan petugas mengetik plat keluar secara manual.
+    }
+  }
+
+  /// Samakan plat keluar dengan plat masuk. Petugas sudah melihat fisik
+  /// kendaraan (kasat mata), jadi tidak perlu pencatatan terpisah oleh sistem.
+  void _useSamePlate() {
+    final inPlate = _session?.plateIn ?? '';
+    if (inPlate.isEmpty) {
+      AppSnackBar.info(context, 'Plat masuk tidak tersedia.');
+      return;
+    }
+    _outPlateController.text = inPlate;
+    AppSnackBar.success(context, 'Plat keluar disamakan: $inPlate');
+  }
+
+  Future<void> _toggleOutTorch() async {
+    final camera = _outCamera;
+    if (camera == null || !_outCamReady) return;
+    try {
+      final next = !_outTorchOn;
+      await camera.setFlashMode(next ? FlashMode.torch : FlashMode.off);
+      if (!mounted) return;
+      setState(() => _outTorchOn = next);
+    } catch (_) {
+      // Diam: tidak semua perangkat mendukung torch.
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      unawaited(_outCamera?.pausePreview().catchError((_) {}) ?? Future.value());
+    } else if (state == AppLifecycleState.resumed) {
+      if (_outCamera != null && _outCamReady && !_outPreviewing) {
+        unawaited(_outCamera?.resumePreview().catchError((_) {}) ?? Future.value());
+      }
+    }
   }
 
   /// Mengambil snapshot plat saat masuk untuk perbandingan visual.
@@ -351,8 +497,9 @@ class _CheckOutPageState extends ConsumerState<CheckOutPage> {
             plate: _currentCheckOutPlate,
             status: status,
             note: note,
-            matchMethod:
-                _matchMethod ?? (status == 'matched' ? 'plate_exact' : 'plate_similar'),
+            matchMethod: status == 'matched'
+                ? 'plate_exact'
+                : (_matchMethod ?? 'plate_similar'),
             photoPath: _outPhotoPath,
           );
 

@@ -139,12 +139,12 @@ extension _CheckOutVerification on _CheckOutPageState {
 
           const SizedBox(height: 14),
 
-          // Two side-by-side columns
-          Row(
+          // Vertikal: foto masuk di atas, kamera keluar di bawah.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Saat Masuk
-              Expanded(
-                child: Container(
+              Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: AppColors.spTint1,
@@ -268,13 +268,11 @@ extension _CheckOutVerification on _CheckOutPageState {
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(width: 8),
+              const SizedBox(height: 8),
 
               // 2. Saat Keluar
-              Expanded(
-                child: Container(
+              Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: _isPlateMatched ? AppColors.spTint1 : AppColors.spDangerBg.withValues(alpha: 0.3),
@@ -315,71 +313,182 @@ extension _CheckOutVerification on _CheckOutPageState {
                       ),
                       const SizedBox(height: 6),
 
-                      // Egress Photo Preview
-                      InkWell(
-                        onTap: _captureOutPhoto,
-                        child: Container(
-                          height: 96,
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF213145),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              if (_outPhotoPath != null)
-                                Image.file(
-                                  File(_outPhotoPath!),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (ctx, err, stack) =>
-                                      const Center(
-                                    child: Icon(Icons.photo_camera,
-                                        color: Colors.white24, size: 28),
-                                  ),
-                                )
-                              else
-                                Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.photo_camera_outlined,
-                                          color: Colors.white38, size: 28),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Ketuk untuk foto plat',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.7),
-                                        ),
-                                      ),
-                                    ],
+                      // Egress Photo Preview — kamera inline, mirip check-in.
+                      Container(
+                        height: 200,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF213145),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            if (_outPreviewing && _outPhotoPath != null)
+                              Image.file(
+                                File(_outPhotoPath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) => Container(
+                                  color: const Color(0xFF213145),
+                                  child: const Center(
+                                    child: Icon(Icons.broken_image_outlined,
+                                        color: Colors.white24, size: 36),
                                   ),
                                 ),
-                              Positioned(
-                                left: 6,
-                                bottom: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xD9213145),
-                                    borderRadius: BorderRadius.circular(4),
+                              )
+                            else if (_outCamera != null && _outCamReady)
+                              CameraPreview(_outCamera!)
+                            else if (_outCamError != null)
+                              Container(
+                                color: const Color(0xFF213145),
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                child: Text(
+                                  _outCamError!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    height: 1.4,
                                   ),
-                                  child: const Text(
-                                    'Foto Saat Keluar',
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                ),
+                              )
+                            else
+                              Container(
+                                color: const Color(0xFF213145),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 32,
+                                    height: 32,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                      color: Colors.white54,
                                     ),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            // Label konteks (kiri atas).
+                            Positioned(
+                              top: 10,
+                              left: 10,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xD9213145),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.photo_camera_outlined,
+                                        size: 12, color: Colors.white70),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Foto Saat Keluar',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Toggle senter (kanan atas).
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: InkWell(
+                                onTap: () => unawaited(_toggleOutTorch()),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: _outTorchOn
+                                        ? Colors.amber.withValues(alpha: 0.3)
+                                        : const Color(0xCC213145),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _outTorchOn
+                                        ? Icons.flash_on_rounded
+                                        : Icons.flash_off_rounded,
+                                    size: 18,
+                                    color: _outTorchOn ? Colors.amber : Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Status (tengah bawah) — teks pendek + ellipsis agar tidak overflow.
+                            Positioned(
+                              bottom: 10,
+                              left: 10,
+                              right: 10,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Text(
+                                    _outPreviewing
+                                        ? 'Pratinjau'
+                                        : _outCamReady
+                                            ? 'Kamera Aktif'
+                                            : (_outCamError != null
+                                                ? 'Tanpa Kamera'
+                                                : 'Menyiapkan…'),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.spInk,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Tombol aksi kamera inline.
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _outPreviewing
+                                ? OutlinedButton.icon(
+                                    onPressed: _retakeOutPhoto,
+                                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                                    label: const Text('Foto Ulang'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.spPrimary600,
+                                      minimumSize: const Size.fromHeight(40),
+                                    ),
+                                  )
+                                : FilledButton.icon(
+                                    onPressed: _outCapturing
+                                        ? null
+                                        : () => unawaited(_captureOutPhotoInline()),
+                                    icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                                    label: Text(
+                                        _outCapturing ? 'Memotret…' : 'Ambil Foto'),
+                                    style: FilledButton.styleFrom(
+                                      minimumSize: const Size.fromHeight(40),
+                                    ),
+                                  ),
+                          ),
+                        ],
                       ),
 
                       const SizedBox(height: 6),
@@ -421,10 +530,22 @@ extension _CheckOutVerification on _CheckOutPageState {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      OutlinedButton.icon(
+                        onPressed: _useSamePlate,
+                        icon: const Icon(Icons.done_all_rounded, size: 16),
+                        label: const Text('Plat Sama dengan Masuk'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.spPrimary600,
+                          side: BorderSide(
+                            color: AppColors.spPrimary600.withValues(alpha: 0.5),
+                          ),
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
             ],
           ),
         ],

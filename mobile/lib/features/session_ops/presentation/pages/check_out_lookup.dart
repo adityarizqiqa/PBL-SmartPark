@@ -162,7 +162,7 @@ extension _CheckOutLookup on _CheckOutPageState {
                 children: [
                   if (_session != null) ...[
                     InkWell(
-                      onTap: _clearSessionState,
+                      onTap: () => rebuild(_clearSessionState),
                       child: const Text(
                         'Reset',
                         style: TextStyle(
